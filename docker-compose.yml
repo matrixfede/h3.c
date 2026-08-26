@@ -1,0 +1,54 @@
+# h3.c Studio: the CUDA backend and the static UI.
+#
+# Prerequisites: an NVIDIA driver matching CUDA 13, the NVIDIA Container
+# Toolkit, and the MiniMax-H3 checkpoint on disk (about 465 GB). The checkpoint
+# is never copied into an image: it is bind-mounted read-only.
+#
+#   cp .env.example .env      # then set H3_MODEL_DIR
+#   docker compose up --build
+#
+# The UI listens on 127.0.0.1 only. It has no authentication: do not publish
+# these ports on an untrusted network. To reach it from another machine, set
+# H3_BIND to a private-network address — a Tailscale address is the safe
+# choice, because the tailnet does the authenticating that this service does
+# not. Binding to 0.0.0.0 hands the GPU and every generated file to anyone on
+# the LAN.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+      args:
+        NVCC_ARCH: ${NVCC_ARCH:-sm_121}
+    environment:
+      H3_MODEL_DIR: /models
+      H3_DATA_DIR: /data
+      H3_MAX_UPLOAD_BYTES: ${H3_MAX_UPLOAD_BYTES:-536870912}
+      # Post-processing stays off unless you install a runtime yourself.
+      H3_FACESWAP_CMD: ${H3_FACESWAP_CMD:-}
+    volumes:
+      - ${H3_MODEL_DIR:?set H3_MODEL_DIR in .env}:/models:ro
+      - ${H3_DATA_DIR:-./data}:/data
+    # The API is only published for local debugging: the web container reaches
+    # it over the compose network, and nginx proxies /api for the browser.
+    ports:
+      - "127.0.0.1:8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    depends_on:
+      - api
+    ports:
+      - "${H3_BIND:-127.0.0.1}:8080:80"
+    restart: unless-stopped

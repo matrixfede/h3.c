@@ -1,0 +1,142 @@
+# h3.c Studio — the web UI
+
+A browser front end for `h3`. Everything the CLI accepts is here: duration,
+canvas, sampler, first/last frame anchors, ordered Ref2VA references, the
+memory and parity switches, and a live preview of the denoising.
+
+A clickable mockup of the interface is in [`docs/mockup/index.html`](mockup/index.html).
+
+## What you need
+
+- The same prerequisites as `h3` itself: an NVIDIA driver matching CUDA 13, the
+  CUDA toolkit, ICU, and FFmpeg/FFprobe 6.1 or newer on `PATH`.
+- The MiniMax-H3 checkpoint on disk (about 465 GB). It is never copied into a
+  container image; it is mounted read-only.
+- Python 3.12 and Node 22 for the local (non-Docker) path.
+- For Docker: the NVIDIA Container Toolkit, so the container can see the GPU.
+
+## Docker
+
+```sh
+cp .env.example .env
+# Set H3_MODEL_DIR to your checkpoint directory, then:
+docker compose up --build
+```
+
+To check that the container sees the GPU and the checkpoint before waiting on
+a first render — it prints the device and a tensor inventory, and nothing else:
+
+```sh
+docker compose run --rm --no-deps api /app/h3 --info -d /models
+```
+
+The UI is then on <http://127.0.0.1:8080> and the API on
+<http://127.0.0.1:8000>. Both bind to the loopback address on purpose — see
+*Security* below.
+
+`NVCC_ARCH` in `.env` selects the CUDA architecture `h3` is compiled for;
+`sm_121` is the NVIDIA GB10. The image is built for the architecture of the
+machine that builds it.
+
+## Running it without Docker
+
+```sh
+# 1. Build h3 as usual.
+make -j"$(nproc)"
+
+# 2. Backend.
+python3 -m venv webui/backend/.venv
+webui/backend/.venv/bin/pip install \
+  "fastapi>=0.115" "uvicorn[standard]>=0.34" "pydantic-settings>=2.6" \
+  python-multipart
+H3_MODEL_DIR=./MiniMax-H3 \
+  webui/backend/.venv/bin/uvicorn app.main:app \
+  --app-dir webui/backend --host 127.0.0.1 --port 8000
+
+# 3. Frontend, in another terminal.
+cd webui/frontend
+npm install
+node scripts/generate-options.mjs
+npm run dev
+```
+
+Open <http://127.0.0.1:5173>. The dev server proxies `/api` to the backend.
+
+## How it works
+
+```
+browser ── /api ──▶ FastAPI ──▶ serial queue ──▶ ./h3 (one process per job)
+   ▲                   │                              │
+   └── SSE progress ────┘                              └── mp4, log, previews
+```
+
+- **One job at a time.** A single GPU with a 27 GB DiT peak: the queue is
+  serial by design, and a queued job can be cancelled before it starts.
+- **One `./h3` process per job.** Every CLI flag is therefore reachable, and
+  cancelling is a signal to the process group. The cost is about 96 seconds of
+  DiT load per job on a GB10.
+- **Validation mirrors the engine.** The messages the browser shows before you
+  submit are copied verbatim from `h3.c`, so a job that the UI accepts is a job
+  the engine accepts.
+- **Progress is weighted.** Phases are not equal: on the calibration run the
+  transformer load took 40.9 s and the denoising 5.1 s. Weights live in
+  `webui/shared/progress_weights.json`; regenerate them for your hardware with
+  `webui/backend/tools/calibrate_progress.py`.
+- **The option inventory has one source.** `webui/shared/options.schema.json`
+  feeds both the backend validator and the generated TypeScript module, and a
+  test fails if it drifts from `main.c`.
+
+## Options
+
+The Simple tab covers prompt, duration, format, a quality preset, first/last
+frame and seed. The Advanced tab exposes everything else, including the ten
+`--use-slower-*` parity flags. Two CLI options are deliberately absent:
+`--show` and `--zoom` are terminal graphics protocols with no meaning in a
+browser — the live preview uses `--preview-dir` instead.
+
+Uploaded images, clips and soundtracks stay in a library and can be reused in
+later jobs, as anchors or as ordered references.
+
+## Security
+
+**There is no authentication.** The backend runs `h3` with parameters supplied
+by whoever can reach it, accepts file uploads, and serves generated media.
+Everything binds to `127.0.0.1` by default.
+
+Do not expose these ports on an untrusted network. Reaching the UI from
+another machine means putting something that authenticates in front of it.
+
+**A private overlay network.** With [Tailscale](https://tailscale.com), publish
+the UI on the tailnet address instead of the loopback: only your own devices
+can then connect, and the tailnet does the authenticating.
+
+```sh
+tailscale ip -4                 # e.g. 100.117.213.82
+# in .env:
+H3_BIND=100.117.213.82
+docker compose up -d
+```
+
+Bear in mind that the container can only bind that address while Tailscale is
+up; `restart: unless-stopped` retries if it is not.
+
+**An SSH tunnel.** No configuration at all, from the other machine:
+
+```sh
+ssh -N -L 8080:127.0.0.1:8080 you@the-machine
+```
+
+Then open <http://localhost:8080> there.
+
+**Publishing on the LAN** (`H3_BIND=0.0.0.0`) gives everyone on the network the
+GPU, the uploads and every generated file, with no password. If you do it
+anyway, two things to know: only port 8080 needs publishing, because nginx
+proxies `/api`; and a host firewall will not save you — ports published by
+Docker are DNAT-ed in the `DOCKER-USER` chain, which `ufw` does not filter, so
+a `ufw deny` rule has no effect on them.
+
+## Post-processing
+
+An optional stage can hand the finished video to an external program. No such
+program is included, and no model is downloaded: see
+[`docs/POSTPROCESSING.md`](POSTPROCESSING.md).

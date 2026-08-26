@@ -12,7 +12,7 @@ outputs/
 h3
 h3_*test
 h3_*tests
-h3_*bench
+h3_*bench*
 h3_dit_bench_864
 h3_tests
 h3_metal_tests
@@ -28,3 +28,16 @@ h3_real_video_vae_test
 h3_semantic_vae_test
 libh3.a
 .DS_Store
+._*
+
+# Node dev tooling and web UI build output.
+node_modules/
+webui/frontend/dist/
+webui/backend/.venv/
+webui/backend/data/
+data/
+__pycache__/
+.pytest_cache/
+
+# Local docker env
+.env
