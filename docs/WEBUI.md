@@ -17,6 +17,9 @@ A clickable mockup of the interface is in [`docs/mockup/index.html`](mockup/inde
 
 ## Docker
 
+`./install.sh` writes the `.env` for you and can fetch the checkpoint; see
+[Installing with the script](../README.md#installing-with-the-script). By hand:
+
 ```sh
 cp .env.example .env
 # Set H3_MODEL_DIR to your checkpoint directory, then:

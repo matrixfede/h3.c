@@ -4,9 +4,15 @@ After a video is generated, h3.c Studio can hand it to an external program
 before publishing it. That is the whole extension point: a contract, not an
 integration.
 
-**This repository contains no models, no weights, and no download URLs.**
-Nothing is fetched at build time or at run time. Every plugin is unavailable
-until you install a runtime yourself and point an environment variable at it.
+**This repository contains no models and no weights**, and nothing is ever
+fetched at build time or at run time. Every plugin is unavailable until a
+runtime is installed and an environment variable points at it.
+
+One URL does appear here, in `install.sh`: `--with-faceswap` fetches the
+**FaceFusion runtime** — the program, not the models — and only when you ask
+for it on the command line or answer yes to the question. FaceFusion then
+downloads its own models, from its own sources, under its own licence. The
+default installs nothing.
 
 ## The contract
 
@@ -34,13 +40,36 @@ readable in one line.
 
 | Name | Environment variable | Status in this repository |
 | --- | --- | --- |
-| `faceswap` | `H3_FACESWAP_CMD` | unavailable — no model, no runtime |
+| `faceswap` | `H3_FACESWAP_CMD` | unavailable until you install a runtime |
 
 `GET /api/capabilities` reports the same thing at run time, with the reason,
 and the UI shows it disabled. Requesting an unavailable plugin fails the job
 instead of silently ignoring it.
 
-## Enabling one
+## Enabling one, with the installer
+
+`./install.sh --with-faceswap` fetches FaceFusion into `vendor/facefusion`,
+runs its own installer, and writes into `.env`:
+
+- `H3_FACESWAP_CMD`, pointing at `scripts/faceswap-facefusion.sh`, the adapter
+  that turns the `--input`/`--output` contract into FaceFusion's command line;
+- `H3_FACEFUSION_DIR`, where the runtime went.
+
+One value stays yours: `H3_FACESWAP_SOURCE`, the image of the face to put in.
+The contract carries only the video, so the adapter reads the face from the
+environment, and refuses to run until it is set.
+
+This wires the **local** path, where FaceFusion runs in its own Python
+environment on the host. It does not wire the container: the API image carries
+neither FaceFusion nor its dependencies, and
+[`docker-compose.faceswap.yml`](../docker-compose.faceswap.yml) expects a
+runtime you have already made reachable inside the container.
+
+FaceFusion's command line is its own and changes between releases; the adapter
+is written against the 3.x `headless-run` and is the one file to adjust if
+yours differs.
+
+## Enabling one by hand
 
 Installing a runtime is one configuration step, not a code change:
 

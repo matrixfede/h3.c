@@ -9,6 +9,9 @@ option of the CLI, with a live preview of the denoising and a weighted
 progress bar. If you would rather click than type, jump to
 [Web UI](#web-ui) — the rest of this document is the CLI.
 
+In a hurry: `install.sh` does the setup below for you, and asks before every
+download. See [Installing with the script](#installing-with-the-script).
+
 ## Platforms and prerequisites
 
 The validated Linux configuration is Ubuntu ARM64, NVIDIA GB10, driver 595.84,
@@ -483,6 +486,45 @@ or an SSH tunnel — rather than publishing it on the LAN. See
 
 An optional post-processing stage can hand the finished video to an external
 program. This repository ships no such program and no models: see
+[`docs/POSTPROCESSING.md`](docs/POSTPROCESSING.md).
+
+## Installing with the script
+
+`install.sh` checks the prerequisites, puts the repository in place and writes
+a `.env`. It downloads **nothing** unless asked: the checkpoint and the
+optional face-swapping runtime are separate questions, and both can be
+declined. Read it before running it: it is deliberately not written to be
+piped from a URL into a shell.
+
+```sh
+git clone https://github.com/matrixfede/h3.c.git ~/h3
+cd ~/h3
+less install.sh
+./install.sh
+```
+
+Run from outside a checkout, it clones the repository itself:
+
+```sh
+bash install.sh --dir ~/h3
+```
+
+Both take `--branch NAME`, and need it while the web UI lives on a branch of
+its own rather than on the default one. Either way the options are the same:
+
+```sh
+./install.sh                    # repository and .env only
+./install.sh --with-model       # and the 465 GB checkpoint
+./install.sh --yes              # no questions; nothing optional is done
+./install.sh --help
+```
+
+`--with-model` runs exactly the `hf download` and `hf cache verify` commands
+documented above, into `<dir>/MiniMax-H3`, and refuses to start if the
+filesystem cannot hold the checkpoint. A snapshot that is already complete is
+left alone.
+
+`--with-faceswap` is off by default and explained in
 [`docs/POSTPROCESSING.md`](docs/POSTPROCESSING.md).
 
 ## Tests and runtime requirements
