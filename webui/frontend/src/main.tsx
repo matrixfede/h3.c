@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App";
 // Fonts are bundled, not fetched: a machine with a GPU may well be offline.
 import "@fontsource/instrument-sans/400.css";
+import "@fontsource/instrument-serif/400.css";
+import "@fontsource/instrument-serif/400-italic.css";
 import "@fontsource/instrument-sans/500.css";
 import "@fontsource/instrument-sans/600.css";
 import "@fontsource/instrument-sans/700.css";

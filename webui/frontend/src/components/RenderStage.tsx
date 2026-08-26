@@ -41,17 +41,6 @@ export function RenderStage(props: {
       </div>
 
       <div className="develop">
-        <div className="rail" aria-hidden="true">
-          {phases.map((phase, index) => (
-            <span
-              key={phase}
-              title={phaseName(phase)}
-              className={`perf${
-                reached < 0 ? "" : index < reached ? " done" : index === reached ? " now" : ""
-              }`}
-            />
-          ))}
-        </div>
         <div
           className="frame"
           style={{ aspectRatio: `${job.params.width} / ${job.params.height}` }}
@@ -76,6 +65,19 @@ export function RenderStage(props: {
               pass {(job.preview_step ?? 0) + 1} of {job.params.steps}
             </span>
           ) : null}
+        </div>
+
+        {/* The film edge doubles as the progress bar: one line, not three. */}
+        <div className="rail" aria-hidden="true">
+          {phases.map((phase, index) => (
+            <span
+              key={phase}
+              title={phaseName(phase)}
+              className={`perf${
+                reached < 0 ? "" : index < reached ? " done" : index === reached ? " now" : ""
+              }`}
+            />
+          ))}
         </div>
       </div>
 

@@ -30,7 +30,7 @@ export function FineTune({ spec, deltas, onChange }: Props) {
       <div className="row">
         <div className="field">
           <span>
-            Detail passes <span className="flag">--steps</span>
+            Detail passes
           </span>
           <p>How many times the picture is refined. More passes bring out more detail.</p>
           <input
@@ -44,7 +44,7 @@ export function FineTune({ spec, deltas, onChange }: Props) {
         </div>
         <div className="field">
           <span>
-            Model depth <span className="flag">--layers</span>
+            Model depth
           </span>
           <p>How much of the model runs. Less is faster and a little looser.</p>
           <input
@@ -63,7 +63,7 @@ export function FineTune({ spec, deltas, onChange }: Props) {
       <div className="row">
         <div className="field">
           <span>
-            How often it redraws <span className="flag">--reuse</span>
+            How often it redraws
           </span>
           <p>
             Redrawing at every pass is closest to the reference. Less often is faster, and
@@ -87,7 +87,7 @@ export function FineTune({ spec, deltas, onChange }: Props) {
         </div>
         <div className="field">
           <span>
-            Work smaller, then enlarge <span className="flag">--render-width</span>
+            Work smaller, then enlarge
           </span>
           <p>Draw at a smaller size and scale the result up. Faster, with less fine detail.</p>
           <select
@@ -113,7 +113,7 @@ export function FineTune({ spec, deltas, onChange }: Props) {
       <div className="row">
         <div className="field">
           <span>
-            Exact size <span className="flag">--width --height</span>
+            Exact size
           </span>
           <p>
             Multiples of 32, and at most {CONSTANTS.max_pixels_label} pixels in total.
@@ -135,7 +135,7 @@ export function FineTune({ spec, deltas, onChange }: Props) {
         </div>
         <div className="field">
           <span>
-            Exact length <span className="flag">--frames</span>
+            Exact length
           </span>
           <p>
             In frames rather than seconds. This job runs {resolvedFrames(spec)} frames.
@@ -157,7 +157,7 @@ export function FineTune({ spec, deltas, onChange }: Props) {
           onChange={(event) => onChange({ ...spec, preview: event.target.checked })}
         />
         <span>
-          Watch it being made <code>--preview-dir</code>
+          Watch it being made
           <span className="why">
             Shows the picture after every pass, so you can stop early if it is going the
             wrong way.
@@ -171,7 +171,7 @@ export function FineTune({ spec, deltas, onChange }: Props) {
           onChange={(event) => onChange({ ...spec, token_reduction: event.target.checked })}
         />
         <span>
-          Pair up detail while drawing <code>--token-reduction</code>
+          Pair up detail while drawing
           <span className="why">
             Faster, and the composition can drift. Leave it off at small sizes.
           </span>

@@ -92,21 +92,45 @@ def test_the_post_processing_section_is_driven_by_the_api():
     assert "faceswap" not in expert, "the plugin name must come from the API"
 
 
-def test_create_mode_names_nothing_after_the_engine():
-    """Rubric M4 criterion 1, on the code that actually ships."""
+def test_the_composing_view_says_nothing_in_the_engine_s_words():
+    """Rubric M5 criterion 1, on the code that actually ships.
+
+    R23 kept every CLI flag visible in Create as a secondary label. R28 moved
+    them out: composing shows a sentence about the shot, and the flags live
+    under Expert with the exact name they have on the command line.
+    """
     create = (FRONTEND / "components/Create.tsx").read_text()
-    labels = re.findall(r'<div className="label">\s*([^<{]+)', create)
-    assert len(labels) >= 4, labels
+    # The whole surface a person composes on, not only the first screen.
+    for name in ["Create", "FineTune", "References", "PhotoSlot"]:
+        source = (FRONTEND / f"components/{name}.tsx").read_text()
+        assert 'className="flag"' not in source, f"a flag chip is back in {name}"
+        assert "<code>--" not in source, f"a flag is back in {name}"
+    named = re.search(r'["\'`][^"\'`]*--[a-z]', create)
+    assert not named, "a flag name is back in Create"
+
+    # Everything a person reads there, with the imports and the interpolations
+    # taken out.
+    prose = "\n".join(
+        line for line in create.splitlines() if not line.startswith("import ")
+    )
+    literals = re.findall(r'"([^"\n]{3,})"|\u0060([^\u0060]{3,})\u0060', prose)
+    words = set()
+    for double, backtick in literals:
+        text = re.sub(r"\$\{[^}]*\}", " ", double or backtick)
+        words |= {word.strip(",.:;()").lower() for word in text.split()}
     jargon = {
         "dit", "denoise", "reuse", "token", "rope", "int8", "canvas", "vae",
-        "latent", "sampler", "steps", "layers", "seed", "frames",
+        "latent", "sampler", "steps", "layers", "seed", "checkpoint",
+        "inference", "tensor",
+        # "frame" is not on this list: it is the subject's own word, and the
+        # first frame of a video is a thing anyone can picture.
     }
-    for label in labels:
-        words = {word.strip(",.").lower() for word in label.split()}
-        assert not words & jargon, label
-    # The flag stays visible, one step down.
-    assert '<span className="flag">--seconds</span>' in create
-    assert '<span className="flag">--seed</span>' in create
+    assert not words & jargon, sorted(words & jargon)
+
+    # And the flags are somewhere: under Expert, named exactly.
+    expert = (FRONTEND / "components/Expert.tsx").read_text()
+    for flag in ["--steps", "--layers", "--seed", "--first-frame", "--last-frame"]:
+        assert flag in expert, flag
 
 
 def test_every_choice_that_changes_the_wait_shows_it():

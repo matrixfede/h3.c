@@ -28,11 +28,11 @@ export function Takes({ jobs, onOpen, onDelete }: Props) {
               <button className="open" onClick={() => onOpen(job)}>
                 <img className="thumb" src={api.posterUrl(job.id)} alt="" />
                 <span className="cap">
-                  <b>{job.prompt.split(" ").slice(0, 4).join(" ")}</b>
+                  {job.prompt.split(" ").slice(0, 5).join(" ")}
                   <span>{clock(job.elapsed)}</span>
                 </span>
               </button>
-              <div className="cap acts">
+              <div className="acts">
                 <DeleteControl label="delete" onDelete={() => onDelete(job)} />
               </div>
             </div>

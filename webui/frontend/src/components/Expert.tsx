@@ -214,6 +214,27 @@ export function Expert({ spec, system, plugins, onChange }: Props) {
 
       <div className="field">
         <span>
+          Watching it being made <span className="flag">--preview-dir</span>
+        </span>
+        <p>
+          Switched on under <b>Picture</b>. The server picks the directory the
+          passes are written to.
+        </p>
+      </div>
+
+      <div className="field">
+        <span>
+          The photos a video starts and ends on{" "}
+          <span className="flag">--first-frame --last-frame</span>
+        </span>
+        <p>
+          Chosen where they are seen, under <b>or start from · a photo</b>, next to
+          the description. They are not repeated here.
+        </p>
+      </div>
+
+      <div className="field">
+        <span>
           Set by the server <span className="flag">--model-dir --output --info</span>
         </span>
         <p>

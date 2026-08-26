@@ -9,9 +9,9 @@ import { LiveStrip } from "./components/LiveStrip";
 import { References } from "./components/References";
 import { RenderStage } from "./components/RenderStage";
 import { Takes, Waiting } from "./components/Takes";
-import { explain, humanMinutes } from "./copy";
+import { explain } from "./copy";
 import { QUALITY_PRESETS } from "./generated/options";
-import { DEFAULT_SPEC, applyQualityPreset, resolvedFrames } from "./spec";
+import { DEFAULT_SPEC, applyQualityPreset } from "./spec";
 import type { Asset, Job, JobSpec, Plugin, SystemInfo, ValidationReport } from "./types";
 import { useEstimates } from "./useEstimates";
 
@@ -27,6 +27,8 @@ export function App() {
   // Which job is on stage. Null means composing: a job keeps running either way.
   const [staged, setStaged] = useState<number | null>(null);
   const [sheet, setSheet] = useState<{ title: string; body: string; job?: Job } | null>(null);
+  // One panel, three tabs. Null means it is closed, which is how it opens.
+  const [panel, setPanel] = useState<"picture" | "references" | "expert" | null>(null);
   const streams = useRef(new Map<number, () => void>());
 
   const refresh = useCallback(async () => {
@@ -218,22 +220,19 @@ export function App() {
                 totalSeconds={estimates.seconds}
                 onChange={setSpec}
                 onUploaded={(asset) => setAssets((current) => [asset, ...current])}
+                onOpenReferences={() => setPanel("references")}
               />
 
               {problems.length > 0 ? (
-                <div className="problem" role="status">
-                  <b>{explain(problems[0]).title}</b>
-                  <p>{explain(problems[0]).fix}</p>
-                  <details>
-                    <summary>what h3 reported</summary>
-                    <pre>{problems.join("\n")}</pre>
-                  </details>
-                </div>
+                <p className="wrong" role="status">
+                  <b>{explain(problems[0]).title}</b> {explain(problems[0]).fix}
+                  <button onClick={() => setSheet({ title: "What h3 reported", body: problems.join("\n") })}>
+                    what h3 reported
+                  </button>
+                </p>
               ) : null}
               {report && report.warnings.length > 0 ? (
-                <p className="note" style={{ color: "var(--muted)" }}>
-                  {report.warnings.join(" ")}
-                </p>
+                <p className="note">{report.warnings.join(" ")}</p>
               ) : null}
 
               <div className="go">
@@ -244,59 +243,61 @@ export function App() {
                 >
                   {running ? "Add to the queue" : "Make the video"}
                 </button>
-                <span className="total">
-                  {running ? "next in line · " : ""}about{" "}
-                  <b>{humanMinutes(estimates.seconds)}</b> on this machine ·{" "}
-                  {resolvedFrames(spec)} frames
-                  {estimates.learnedFrom >= 2
-                    ? ` · learnt from your last ${estimates.learnedFrom} videos`
-                    : ""}
-                </span>
+                <button
+                  className="more"
+                  onClick={() => setPanel((open) => (open === null ? "picture" : null))}
+                >
+                  Everything else {panel === null ? "↓" : "↑"}
+                </button>
               </div>
 
               <Waiting jobs={jobs} onCancel={(id) => void cancel(id)} onLog={showLog} />
 
-              <details className="level">
-                <summary>
-                  Fine-tune <small>quality, length and size, one control at a time</small>
-                </summary>
-                <FineTune
-                  spec={spec}
-                  deltas={{
-                    base: estimates.seconds,
-                    steps: estimates.variants[SHAPES.length + QUALITY_PRESETS.length] ?? null,
-                    layers: estimates.variants[SHAPES.length + QUALITY_PRESETS.length + 1] ?? null,
-                    reuse: estimates.variants[SHAPES.length + QUALITY_PRESETS.length + 2] ?? null,
-                    render: estimates.variants[SHAPES.length + QUALITY_PRESETS.length + 3] ?? null,
-                  }}
-                  onChange={setSpec}
-                />
-              </details>
+              {panel !== null ? (
+                <section className="everything">
+                  <h2>Everything else</h2>
+                  <div className="tabs" role="tablist">
+                    {([
+                      ["picture", "Picture"],
+                      ["references", `Reference material${spec.references.length ? ` (${spec.references.length})` : ""}`],
+                      ["expert", "Expert"],
+                    ] as const).map(([id, label]) => (
+                      <button
+                        key={id}
+                        role="tab"
+                        aria-selected={panel === id}
+                        onClick={() => setPanel(id)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {panel === "picture" ? (
+                    <FineTune
+                      spec={spec}
+                      deltas={{
+                        base: estimates.seconds,
+                        steps: estimates.variants[SHAPES.length + QUALITY_PRESETS.length] ?? null,
+                        layers: estimates.variants[SHAPES.length + QUALITY_PRESETS.length + 1] ?? null,
+                        reuse: estimates.variants[SHAPES.length + QUALITY_PRESETS.length + 2] ?? null,
+                        render: estimates.variants[SHAPES.length + QUALITY_PRESETS.length + 3] ?? null,
+                      }}
+                      onChange={setSpec}
+                    />
+                  ) : null}
+                  {panel === "references" ? (
+                    <References
+                      spec={spec}
+                      onChange={setSpec}
+                      onUploaded={(asset) => setAssets((current) => [asset, ...current])}
+                    />
+                  ) : null}
+                  {panel === "expert" ? (
+                    <Expert spec={spec} system={system} plugins={plugins} onChange={setSpec} />
+                  ) : null}
+                </section>
+              ) : null}
 
-              <details className="level">
-                <summary>
-                  Reference material{" "}
-                  <small>photos, clips and sounds to draw from</small>
-                  <span className="count">{spec.references.length}/12</span>
-                </summary>
-                <References
-                  spec={spec}
-                  onChange={setSpec}
-                  onUploaded={(asset) => setAssets((current) => [asset, ...current])}
-                />
-              </details>
-
-              <details className="level">
-                <summary>
-                  Expert <small>every h3 flag, named as it is on the command line</small>
-                </summary>
-                <Expert
-                  spec={spec}
-                  system={system}
-                  plugins={plugins}
-                  onChange={setSpec}
-                />
-              </details>
             </>
           )}
         </div>
