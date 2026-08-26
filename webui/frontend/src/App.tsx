@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ApiError, api, watchJob } from "./api";
 import { Create, SHAPES } from "./components/Create";
+import { DeleteControl } from "./components/DeleteControl";
 import { Expert } from "./components/Expert";
 import { FineTune } from "./components/FineTune";
 import { LiveStrip } from "./components/LiveStrip";
@@ -22,6 +23,7 @@ export function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [report, setReport] = useState<ValidationReport | null>(null);
   const [refused, setRefused] = useState<string[] | null>(null);
+  const [undeleted, setUndeleted] = useState<string | null>(null);
   // Which job is on stage. Null means composing: a job keeps running either way.
   const [staged, setStaged] = useState<number | null>(null);
   const [sheet, setSheet] = useState<{ title: string; body: string; job?: Job } | null>(null);
@@ -111,6 +113,21 @@ export function App() {
     }
   }
 
+  async function remove(id: number) {
+    setUndeleted(null);
+    try {
+      await api.remove(id);
+      setJobs((current) => current.filter((entry) => entry.id !== id));
+      if (staged === id) setStaged(null);
+    } catch (failure) {
+      setUndeleted(
+        failure instanceof ApiError
+          ? String(failure.message)
+          : "That video could not be deleted.",
+      );
+    }
+  }
+
   async function cancel(id: number) {
     const job = await api.cancel(id);
     setJobs((current) => current.map((entry) => (entry.id === id ? job : entry)));
@@ -171,6 +188,12 @@ export function App() {
                     <a href={api.videoUrl(onStage.id)} download>
                       Download this one
                     </a>
+                    {onStage.state === "completed" ? (
+                      <DeleteControl
+                        label="Delete this one"
+                        onDelete={() => remove(onStage.id)}
+                      />
+                    ) : null}
                   </span>
                 </div>
               ) : null}
@@ -279,7 +302,16 @@ export function App() {
         </div>
       </main>
 
-      <Takes jobs={jobs} onOpen={(job) => setStaged(job.id)} />
+      <Takes
+        jobs={jobs}
+        onOpen={(job) => setStaged(job.id)}
+        onDelete={(job) => void remove(job.id)}
+      />
+      {undeleted ? (
+        <p className="note undeleted" role="status">
+          {undeleted}
+        </p>
+      ) : null}
 
       {sheet ? (
         <div className="modal" onClick={() => setSheet(null)}>

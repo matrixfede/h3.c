@@ -51,6 +51,14 @@ export const api = {
     request<Job>("/api/jobs", { method: "POST", body: JSON.stringify(spec) }),
   cancel: (id: number) =>
     request<Job>(`/api/jobs/${id}/cancel`, { method: "POST" }),
+  /** Deletes the job and everything it wrote. Answers 204, with no body. */
+  remove: async (id: number): Promise<void> => {
+    const response = await fetch(`/api/jobs/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => null);
+      throw new ApiError(response.status, detail?.detail ?? response.statusText);
+    }
+  },
   assets: () => request<Asset[]>("/api/assets"),
   upload: async (file: File): Promise<Asset> => {
     const body = new FormData();

@@ -10,6 +10,7 @@ import contextlib
 import json
 import os
 import re
+import shutil
 import signal
 import sqlite3
 import subprocess
@@ -96,8 +97,34 @@ class JobRunner:
         row = self.db.query_one("SELECT * FROM jobs WHERE id = ?", (job_id,))
         return self._decorate(_row(row)) if row else None
 
+    def job_dir(self, job_id: int) -> Path:
+        return self.config.data_dir / "jobs" / str(job_id)
+
     def preview_dir(self, job_id: int) -> Path:
-        return self.config.data_dir / "jobs" / str(job_id) / "preview"
+        return self.job_dir(job_id) / "preview"
+
+    def delete(self, job_id: int) -> str | None:
+        """Remove a finished job and everything it wrote to disk.
+
+        Only a job in a terminal state can be deleted, which keeps the worker
+        from writing into a directory that is being removed. That is a guard,
+        not a guarantee: a job the restart sweep declared failed may still have
+        a live h3 of its own, because h3 outlives a crash of this service.
+
+        The directory goes first. If it cannot be removed the row stays and the
+        video is still listed: a visible remnant that can be deleted again is
+        better than gigabytes nothing points at any more. The path is derived
+        from the job id, never from anything the client sent.
+        """
+        job = self.get(job_id)
+        if job is None:
+            return None
+        if job["state"] not in TERMINAL_STATES:
+            return "unfinished"
+        with contextlib.suppress(FileNotFoundError):
+            shutil.rmtree(self.job_dir(job_id))
+        self.db.run("DELETE FROM jobs WHERE id = ?", (job_id,))
+        return "deleted"
 
     def _decorate(self, job: dict[str, Any]) -> dict[str, Any]:
         """Attach the newest preview and the weighted progress estimate."""

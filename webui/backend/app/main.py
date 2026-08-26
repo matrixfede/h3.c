@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from pydantic import ValidationError
 
@@ -125,6 +125,23 @@ def create_app(config: Settings | None = None) -> FastAPI:
         if job is None:
             raise HTTPException(status_code=404, detail="unknown job")
         return job
+
+    @app.delete("/api/jobs/{job_id}", status_code=204)
+    def delete_job(job_id: int) -> Response:
+        try:
+            outcome = app.state.runner.delete(job_id)
+        except OSError as failure:
+            raise HTTPException(
+                status_code=500,
+                detail=f"the files of this video could not be removed: {failure}",
+            ) from failure
+        if outcome is None:
+            raise HTTPException(status_code=404, detail="unknown job")
+        if outcome == "unfinished":
+            raise HTTPException(
+                status_code=409, detail="stop this video before deleting it"
+            )
+        return Response(status_code=204)
 
     @app.get("/api/jobs/{job_id}/events")
     async def job_stream(job_id: int) -> StreamingResponse:

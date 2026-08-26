@@ -1,14 +1,16 @@
 import { api } from "../api";
 import { clock, stateName } from "../copy";
 import type { Job } from "../types";
+import { DeleteControl } from "./DeleteControl";
 
 interface Props {
   jobs: Job[];
   onOpen: (job: Job) => void;
+  onDelete: (job: Job) => void;
 }
 
 /** Everything this machine has made, most recent first. */
-export function Takes({ jobs, onOpen }: Props) {
+export function Takes({ jobs, onOpen, onDelete }: Props) {
   const done = jobs.filter((job) => job.state === "completed");
   return (
     <section className="takes">
@@ -20,13 +22,20 @@ export function Takes({ jobs, onOpen }: Props) {
       ) : (
         <div className="strip">
           {done.map((job) => (
-            <button key={job.id} className="take" onClick={() => onOpen(job)}>
-              <img className="thumb" src={api.posterUrl(job.id)} alt="" />
-              <span className="cap">
-                <b>{job.prompt.split(" ").slice(0, 4).join(" ")}</b>
-                <span>{clock(job.elapsed)}</span>
-              </span>
-            </button>
+            // A card, not a button: the delete control lives inside it, and a
+            // button cannot hold another one.
+            <div key={job.id} className="take">
+              <button className="open" onClick={() => onOpen(job)}>
+                <img className="thumb" src={api.posterUrl(job.id)} alt="" />
+                <span className="cap">
+                  <b>{job.prompt.split(" ").slice(0, 4).join(" ")}</b>
+                  <span>{clock(job.elapsed)}</span>
+                </span>
+              </button>
+              <div className="cap acts">
+                <DeleteControl label="delete" onDelete={() => onDelete(job)} />
+              </div>
+            </div>
           ))}
         </div>
       )}

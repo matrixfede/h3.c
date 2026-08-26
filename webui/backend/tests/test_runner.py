@@ -212,3 +212,74 @@ def test_shutdown_cancels_the_running_job_instead_of_failing_it(tmp_path):
     with TestClient(create_app(config)) as client:
         job = client.get(f"/api/jobs/{job_id}").json()
     assert job["state"] == "cancelled"
+
+
+def test_a_finished_job_can_be_deleted_with_everything_it_wrote(tmp_path):
+    with _client(tmp_path, SUCCESS) as client:
+        job_id = client.post("/api/jobs", json=JOB).json()["id"]
+        _wait(client, job_id, {"completed", "failed"})
+        directory = tmp_path / "data/jobs" / str(job_id)
+        assert (directory / "out.mp4").is_file()
+
+        assert client.delete(f"/api/jobs/{job_id}").status_code == 204
+
+        assert not directory.exists()
+        assert client.get(f"/api/jobs/{job_id}").status_code == 404
+        assert client.get(f"/api/jobs/{job_id}/video").status_code == 404
+        assert client.get(f"/api/jobs/{job_id}/log").status_code == 404
+        assert client.get("/api/jobs").json() == []
+
+
+def test_deleting_a_running_job_is_refused_and_keeps_its_files(tmp_path):
+    with _client(tmp_path, SLOW) as client:
+        job_id = client.post("/api/jobs", json=JOB).json()["id"]
+        _wait(client, job_id, {"running"})
+
+        # The row flips to running before h3 is even spawned, so the job's
+        # files are compared against themselves rather than against a name
+        # that may not have been written yet.
+        directory = tmp_path / "data/jobs" / str(job_id)
+        before = {entry.name for entry in directory.iterdir()}
+
+        refused = client.delete(f"/api/jobs/{job_id}")
+        assert refused.status_code == 409
+        assert refused.json()["detail"] == "stop this video before deleting it"
+        assert directory.is_dir()
+        assert before <= {entry.name for entry in directory.iterdir()}
+        assert client.get(f"/api/jobs/{job_id}").json()["state"] == "running"
+
+        client.post(f"/api/jobs/{job_id}/cancel")
+        _wait(client, job_id, {"cancelled", "failed", "completed"})
+
+
+def test_a_queued_job_is_removed_by_stopping_it_not_by_deleting_it(tmp_path):
+    with _client(tmp_path, SLOW) as client:
+        running = client.post("/api/jobs", json=JOB).json()["id"]
+        queued = client.post("/api/jobs", json=JOB).json()["id"]
+        _wait(client, running, {"running"})
+        assert client.get(f"/api/jobs/{queued}").json()["state"] == "queued"
+
+        assert client.delete(f"/api/jobs/{queued}").status_code == 409
+
+        client.post(f"/api/jobs/{queued}/cancel")
+        _wait(client, queued, {"cancelled", "failed", "completed"})
+        assert client.delete(f"/api/jobs/{queued}").status_code == 204
+        client.post(f"/api/jobs/{running}/cancel")
+        _wait(client, running, {"cancelled", "failed", "completed"})
+
+
+def test_deleting_an_unknown_job_is_a_404(tmp_path):
+    with _client(tmp_path, SUCCESS) as client:
+        assert client.delete("/api/jobs/404").status_code == 404
+
+
+def test_the_event_stream_of_a_deleted_job_ends_instead_of_hanging(tmp_path):
+    with _client(tmp_path, SUCCESS) as client:
+        job_id = client.post("/api/jobs", json=JOB).json()["id"]
+        _wait(client, job_id, {"completed", "failed"})
+        client.delete(f"/api/jobs/{job_id}")
+
+        with client.stream("GET", f"/api/jobs/{job_id}/events") as stream:
+            body = "".join(stream.iter_text())
+    assert "event: error" in body
+    assert "unknown job" in body

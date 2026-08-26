@@ -391,3 +391,18 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .take .thumb{object-fit:cover}
 /* A vertical video must not turn the stage into a slab. */
 .frame{max-height:62vh;margin:0 auto}
+
+/* Deleting a take: the control is quiet until it is asked, then it is red. */
+.take .open{display:block;width:100%;text-align:left}
+.take .acts{border-top:1px solid var(--line);justify-content:flex-end;
+  align-items:center;padding-top:6px}
+.del{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.del:hover{color:var(--fail)}
+.del.yes{color:var(--fail);font-weight:500}
+.asking{display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:10.5px;color:var(--ink)}
+/* In a 190px card the question does not share a line with its answers. */
+.take .asking{flex-wrap:wrap;justify-content:flex-end}
+.take .asking>span:first-child{flex:0 0 100%;text-align:right;margin-bottom:4px}
+.go .total .asking,.go .total .del{margin-left:12px}
+.undeleted{max-width:764px;margin:0 auto 22px;padding:0 22px;color:var(--fail)}
