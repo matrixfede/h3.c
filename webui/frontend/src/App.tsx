@@ -239,6 +239,19 @@ export function App() {
             : (system?.reason ?? "looking for the engine…")}
         </span>
         <span className="whoami">
+          {/* R32: the administration has its own door, visible to the admin
+             alone, instead of hiding inside "Everything else". */}
+          {me.role === "admin" ? (
+            <button
+              className="people-door"
+              onClick={() => {
+                setStaged(null);
+                setPanel("people");
+              }}
+            >
+              People
+            </button>
+          ) : null}
           {me.username}
           <button onClick={() => void signOut()}>sign out</button>
         </span>
