@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { DragEvent } from "react";
 
 import { ApiError, api, watchJob } from "./api";
 import { Create, SHAPES } from "./components/Create";
@@ -9,7 +10,7 @@ import { LiveStrip } from "./components/LiveStrip";
 import { References } from "./components/References";
 import { RenderStage } from "./components/RenderStage";
 import { Takes, Waiting } from "./components/Takes";
-import { explain } from "./copy";
+import { explain, humanMinutes } from "./copy";
 import { QUALITY_PRESETS } from "./generated/options";
 import { DEFAULT_SPEC, applyQualityPreset } from "./spec";
 import type { Asset, Job, JobSpec, Plugin, SystemInfo, ValidationReport } from "./types";
@@ -24,6 +25,7 @@ export function App() {
   const [report, setReport] = useState<ValidationReport | null>(null);
   const [refused, setRefused] = useState<string[] | null>(null);
   const [undeleted, setUndeleted] = useState<string | null>(null);
+  const [dropNote, setDropNote] = useState<string | null>(null);
   // Which job is on stage. Null means composing: a job keeps running either way.
   const [staged, setStaged] = useState<number | null>(null);
   const [sheet, setSheet] = useState<{ title: string; body: string; job?: Job } | null>(null);
@@ -142,6 +144,31 @@ export function App() {
     setSheet({ title: `Job ${job.id}`, body: text, job });
   }
 
+  /* R29 P10: files dropped anywhere on the page land in the library, so
+   * material is one drag away from any job. */
+  async function acceptDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer.files);
+    if (files.length === 0) return;
+    const added: Asset[] = [];
+    const refusedNames: string[] = [];
+    for (const file of files) {
+      try {
+        added.push(await api.upload(file));
+      } catch {
+        refusedNames.push(file.name);
+      }
+    }
+    if (added.length > 0) {
+      setAssets((current) => [...added, ...current]);
+    }
+    setDropNote(
+      refusedNames.length === 0
+        ? `Added to your library: ${added.map((asset) => asset.filename).join(", ")}.`
+        : `Could not add: ${refusedNames.join(", ")}.`,
+    );
+  }
+
   const device = system?.device ?? {};
   const problems = [...blocking, ...(refused ?? [])];
 
@@ -154,6 +181,8 @@ export function App() {
             ? "watching"
             : "composing"
       }
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => void acceptDrop(event)}
     >
       <header className="bar">
         <span className="wordmark">
@@ -234,6 +263,11 @@ export function App() {
               {report && report.warnings.length > 0 ? (
                 <p className="note">{report.warnings.join(" ")}</p>
               ) : null}
+              {dropNote ? (
+                <p className="note" role="status">
+                  {dropNote}
+                </p>
+              ) : null}
 
               <div className="go">
                 <button
@@ -242,6 +276,10 @@ export function App() {
                   onClick={() => void make()}
                 >
                   {running ? "Add to the queue" : "Make the video"}
+                  {/* R29 P9: the wait rides on the button itself. */}
+                  {estimates.seconds !== null ? (
+                    <span className="wait">≈ {humanMinutes(estimates.seconds)}</span>
+                  ) : null}
                 </button>
                 <button
                   className="more"

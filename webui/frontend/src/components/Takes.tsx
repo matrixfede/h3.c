@@ -1,3 +1,5 @@
+import { useRef } from "react";
+
 import { api } from "../api";
 import { clock, stateName } from "../copy";
 import type { Job } from "../types";
@@ -9,7 +11,11 @@ interface Props {
   onDelete: (job: Job) => void;
 }
 
-/** Everything this machine has made, most recent first. */
+/** Everything this machine has made, most recent first.
+ *
+ *  R29 P3: a grid, and hovering a take starts it playing in place; the
+ *  actions surface over the moving picture instead of waiting below it.
+ */
 export function Takes({ jobs, onOpen, onDelete }: Props) {
   const done = jobs.filter((job) => job.state === "completed");
   return (
@@ -20,26 +26,60 @@ export function Takes({ jobs, onOpen, onDelete }: Props) {
           Nothing made yet. Describe a scene above and the first take lands here.
         </div>
       ) : (
-        <div className="strip">
+        <div className="grid">
           {done.map((job) => (
-            // A card, not a button: the delete control lives inside it, and a
-            // button cannot hold another one.
-            <div key={job.id} className="take">
-              <button className="open" onClick={() => onOpen(job)}>
-                <img className="thumb" src={api.posterUrl(job.id)} alt="" />
-                <span className="cap">
-                  {job.prompt.split(" ").slice(0, 5).join(" ")}
-                  <span>{clock(job.elapsed)}</span>
-                </span>
-              </button>
-              <div className="acts">
-                <DeleteControl label="delete" onDelete={() => onDelete(job)} />
-              </div>
-            </div>
+            <TakeCard key={job.id} job={job} onOpen={onOpen} onDelete={onDelete} />
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+function TakeCard({ job, onOpen, onDelete }: {
+  job: Job;
+  onOpen: (job: Job) => void;
+  onDelete: (job: Job) => void;
+}) {
+  const video = useRef<HTMLVideoElement>(null);
+
+  return (
+    <div
+      className="take"
+      onMouseEnter={() => {
+        const player = video.current;
+        if (player) {
+          player.currentTime = 0;
+          // A poster stays up if the video cannot play yet.
+          void player.play().catch(() => {});
+        }
+      }}
+      onMouseLeave={() => video.current?.pause()}
+    >
+      <div className="screen" onClick={() => onOpen(job)}>
+        <img className="poster" src={api.posterUrl(job.id)} alt="" />
+        <video
+          ref={video}
+          className="playing"
+          src={api.videoUrl(job.id)}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+        />
+        <div className="veil" onClick={(event) => event.stopPropagation()}>
+          <button onClick={() => onOpen(job)}>Open</button>
+          <a href={api.videoUrl(job.id)} download>
+            Save
+          </a>
+          <DeleteControl label="Delete" onDelete={() => onDelete(job)} />
+        </div>
+      </div>
+      <span className="cap">{job.prompt.split(" ").slice(0, 5).join(" ")}</span>
+      <span className="meta">
+        {job.params.width}×{job.params.height} · {clock(job.elapsed)}
+      </span>
+    </div>
   );
 }
 

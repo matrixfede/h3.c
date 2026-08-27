@@ -9,7 +9,7 @@
   --line:#DCDEE1; --line-strong:#9AA0A7;
   --ink:#101317; --muted:#5A626B;
   --accent:#B5157C; --accent-ink:#FFFFFF; --accent-wash:#FBEAF4;
-  --ready:#0E7C86; --fail:#B93129; --fail-wash:#FBE9E8;
+  --ready:#0C737D; --fail:#B93129; --fail-wash:#FBE9E8;
   --serif:"Instrument Serif",ui-serif,Georgia,serif;
   --sans:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;
   --mono:"Martian Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -76,6 +76,24 @@ main{max-width:var(--column);margin:0 auto;padding:0 22px 64px}
 .under{height:1px;background:var(--line);margin-top:22px;transition:background .18s ease}
 .write:focus-within .under{background:var(--accent)}
 
+/* R29 P1 — what the shot starts from, ends on and keeps hangs off the
+   prompt as chips; each one opens its picker where it stands. */
+.attach{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:4px 12px 4px 4px;border:1px solid var(--line);
+  border-radius:999px;background:var(--surface);font-size:12.5px;
+}
+.chip img{
+  width:28px;height:28px;border-radius:999px;object-fit:cover;display:block;
+  background:var(--sunken);
+}
+.chip:hover{border-color:var(--line-strong)}
+.chip.add{padding-left:12px;color:var(--muted)}
+.chip.add:hover{color:var(--ink);border-color:var(--line-strong)}
+.chip .x{color:var(--line-strong);font-size:11px;margin-left:2px}
+.chip .x:hover{color:var(--fail)}
+
 /* The shot line: every choice is a word, and every word is a control. */
 .shot{
   margin-top:16px;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 9px;
@@ -114,6 +132,11 @@ main{max-width:var(--column);margin:0 auto;padding:0 22px 64px}
   padding:13px 30px;font-size:15px;font-weight:600;letter-spacing:-.005em;
 }
 .make:hover:not(:disabled){filter:brightness(1.08)}
+/* R29 P9 — the wait sits on the button, where others put credits. */
+.make .wait{
+  font-family:var(--mono);font-size:10.5px;font-weight:300;letter-spacing:.03em;
+  opacity:.85;font-variant-numeric:tabular-nums;
+}
 .more{color:var(--muted);font-size:14px}
 .more:hover{color:var(--ink)}
 
@@ -121,6 +144,8 @@ main{max-width:var(--column);margin:0 auto;padding:0 22px 64px}
 .starts em{font-style:normal;color:var(--muted)}
 .starts button{color:var(--ink);border-bottom:1px dotted var(--line-strong)}
 .starts button:hover{color:var(--accent);border-bottom-color:var(--accent)}
+/* R29 P10 — one line says the whole page accepts files. */
+.drop{margin-top:10px;font-size:12.5px;color:var(--muted)}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
 @media (max-width:620px){.pair{grid-template-columns:1fr}}
 
@@ -259,7 +284,7 @@ main{max-width:var(--column);margin:0 auto;padding:0 22px 64px}
   overflow:hidden;position:relative;
 }
 .frame img,.frame video{
-  display:block;width:100%;height:100%;max-height:56vh;object-fit:contain;
+  display:block;width:100%;height:100%;max-height:72vh;object-fit:contain;
   background:var(--sunken);
 }
 .stepmark{
@@ -284,24 +309,40 @@ main{max-width:var(--column);margin:0 auto;padding:0 22px 64px}
 }
 .spinner{color:var(--muted);font-size:13.5px}
 
-/* ── takes: stills and a caption, nothing drawn around them ─────────────── */
+/* ── takes: a grid that plays on hover (R29 P3) ────────────────────────── */
 .takes{max-width:var(--column);margin:56px auto 0;padding:0 22px}
 .takes h2{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 14px;letter-spacing:.02em}
-.strip{display:flex;gap:18px;overflow-x:auto;padding-bottom:8px}
-.take{flex:0 0 168px}
-.take .open{display:block;width:100%;text-align:left}
-.take .thumb{
-  width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:8px;
-  background:var(--sunken);display:block;
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.take .screen{
+  position:relative;aspect-ratio:16/10;border-radius:8px;overflow:hidden;
+  background:var(--sunken);cursor:pointer;
 }
+.take .poster,.take .playing{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
+}
+.take .playing{display:none}
+.take:hover .poster{display:none}
+.take:hover .playing{display:block}
+/* actions surface only on hover, over a dark veil */
+.take .veil{
+  position:absolute;inset:0;display:flex;align-items:flex-end;gap:10px;
+  padding:8px;opacity:0;transition:opacity .15s ease;
+  background:linear-gradient(transparent 55%,rgba(0,0,0,.55));
+}
+.take:hover .veil,.take .veil:has(.asking){opacity:1}
+.take .veil button,.take .veil a{color:#fff;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,.6);text-decoration:none}
+.take .veil button:hover,.take .veil a:hover{text-decoration:underline}
+.take .veil .del{color:#fff;margin-left:auto}
+.take .veil .del:hover{color:var(--fail)}
+.take .veil .del.yes{color:#EE7078}
+.take .veil .asking{color:#fff}
 .take .cap{
-  display:block;margin-top:8px;font-family:var(--serif);font-size:15px;line-height:1.25;
+  display:block;margin-top:8px;font-family:var(--serif);font-size:14.5px;line-height:1.25;
 }
-.take .cap span{
-  display:block;font-family:var(--sans);font-size:11.5px;color:var(--muted);
+.take .meta{
+  display:flex;gap:8px;font-size:11px;color:var(--muted);
   font-variant-numeric:tabular-nums;
 }
-.take .acts{display:flex;margin-top:2px}
 .empty{
   border:1px dashed var(--line-strong);border-radius:var(--radius);
   padding:22px;text-align:center;color:var(--muted);font-size:13.5px;

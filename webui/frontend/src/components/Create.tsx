@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { api } from "../api";
 import { CONSTANTS, QUALITY_PRESETS } from "../generated/options";
 import { humanMinutes } from "../copy";
 import {
@@ -9,7 +10,7 @@ import {
   resolvedFrames,
   resolvedSeconds,
 } from "../spec";
-import type { Asset, JobSpec } from "../types";
+import type { Asset, JobSpec, ReferenceKind } from "../types";
 import { PhotoSlot } from "./PhotoSlot";
 
 interface Props {
@@ -41,6 +42,15 @@ const PRESET_NAMES: Record<string, string> = {
   reference: "the best it can",
 };
 
+/* R29 P1: what a reference does, in the person's words. */
+const REF_NAMES: Record<ReferenceKind, string> = {
+  image: "a photo to keep",
+  video: "a clip to keep",
+  silent_video: "a silent clip to keep",
+  video_audio: "a clip with its sound",
+  audio: "a sound to keep",
+};
+
 type Open = "length" | "shape" | "quality" | "variation" | "photos" | null;
 
 /** One line of direction, and four words that can be changed.
@@ -67,6 +77,8 @@ export function Create(props: Props) {
     spec.render_width === 0;
   const anchored = spec.first_frame !== null || spec.last_frame !== null;
   const anchorsBlocked = spec.references.length > 0;
+  const assetOf = (path: string | null) =>
+    path === null ? undefined : assets.find((asset) => asset.path === path);
 
   const toggle = (which: Open) => setOpen((current) => (current === which ? null : which));
   const word = (which: Open, text: string) => (
@@ -87,6 +99,78 @@ export function Create(props: Props) {
           onChange={(event) => onChange({ ...spec, prompt: event.target.value })}
         />
         <div className="under" />
+      </div>
+
+      {/* R29 P1: attachments hang off the prompt, not in a room of their
+         own. A chip opens its picker where it stands; the ✕ lets go. */}
+      <div className="attach">
+        {spec.first_frame !== null ? (
+          <button className="chip" onClick={() => toggle("photos")}>
+            {assetOf(spec.first_frame) ? (
+              <img src={api.assetUrl(assetOf(spec.first_frame)!.id)} alt="" />
+            ) : null}
+            <span>starts from this photo</span>
+            <span
+              className="x"
+              role="button"
+              aria-label="Remove the photo it starts from"
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange({ ...spec, first_frame: null });
+              }}
+            >
+              ✕
+            </span>
+          </button>
+        ) : null}
+        {spec.last_frame !== null ? (
+          <button className="chip" onClick={() => toggle("photos")}>
+            {assetOf(spec.last_frame) ? (
+              <img src={api.assetUrl(assetOf(spec.last_frame)!.id)} alt="" />
+            ) : null}
+            <span>ends on this photo</span>
+            <span
+              className="x"
+              role="button"
+              aria-label="Remove the photo it ends on"
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange({ ...spec, last_frame: null });
+              }}
+            >
+              ✕
+            </span>
+          </button>
+        ) : null}
+        {spec.references.map((reference, index) => (
+          <button
+            key={`${reference.kind}:${reference.path}:${index}`}
+            className="chip"
+            onClick={onOpenReferences}
+          >
+            {assetOf(reference.path) ? (
+              <img src={api.assetUrl(assetOf(reference.path)!.id)} alt="" />
+            ) : null}
+            <span>{REF_NAMES[reference.kind]}</span>
+            <span
+              className="x"
+              role="button"
+              aria-label="Remove this reference"
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange({
+                  ...spec,
+                  references: spec.references.filter((_, i) => i !== index),
+                });
+              }}
+            >
+              ✕
+            </span>
+          </button>
+        ))}
+        <button className="chip add" onClick={onOpenReferences}>
+          + a photo, clip or sound
+        </button>
       </div>
 
       <p className="shot">
@@ -233,6 +317,10 @@ export function Create(props: Props) {
             ? `${spec.references.length} reference${spec.references.length === 1 ? "" : "s"}`
             : "reference material"}
         </button>
+      </p>
+      {/* R29 P10: one line says the whole page accepts files. */}
+      <p className="drop">
+        Drop a photo, clip or sound anywhere on this page to add it to your library.
       </p>
 
       {spec.prompt.trim() === "" ? (
