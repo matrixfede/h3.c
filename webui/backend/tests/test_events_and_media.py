@@ -6,10 +6,9 @@ import stat
 import time
 
 import pytest
-from fastapi.testclient import TestClient
+from conftest import authed_client
 
 from app.config import Settings
-from app.main import create_app
 
 JOB = {"prompt": "a fox", "width": 512, "height": 512, "frames": 22, "steps": 2}
 
@@ -39,7 +38,7 @@ def _client(tmp_path, script=PROGRESS):
     config = Settings(
         binary=binary, model_dir=tmp_path, data_dir=tmp_path / "data"
     )
-    return TestClient(create_app(config))
+    return authed_client(config)
 
 
 def _parse(stream_text: str) -> list[dict]:

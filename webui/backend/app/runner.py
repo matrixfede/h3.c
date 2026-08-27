@@ -83,10 +83,11 @@ class JobRunner:
                 self._finish(pending, "cancelled", error="backend shutting down")
 
     # ── public API ───────────────────────────────────────────────────────
-    def submit(self, spec: JobSpec) -> dict[str, Any]:
+    def submit(self, spec: JobSpec, owner: int | None = None) -> dict[str, Any]:
         job_id = self.db.run(
-            "INSERT INTO jobs (state, prompt, params) VALUES ('queued', ?, ?)",
-            (spec.prompt, spec.model_dump_json()),
+            "INSERT INTO jobs (state, prompt, params, owner)"
+            " VALUES ('queued', ?, ?, ?)",
+            (spec.prompt, spec.model_dump_json(), owner),
         )
         self._wake.set()
         job = self.get(job_id)
@@ -142,10 +143,19 @@ class JobRunner:
         )
         return job
 
-    def listing(self, limit: int = 100) -> list[dict[str, Any]]:
-        rows = self.db.query_all(
-            "SELECT * FROM jobs ORDER BY id DESC LIMIT ?", (limit,)
-        )
+    def listing(
+        self, limit: int = 100, owner: int | None = None
+    ) -> list[dict[str, Any]]:
+        """Newest first; `owner` filters to one person's takes (R30)."""
+        if owner is None:
+            rows = self.db.query_all(
+                "SELECT * FROM jobs ORDER BY id DESC LIMIT ?", (limit,)
+            )
+        else:
+            rows = self.db.query_all(
+                "SELECT * FROM jobs WHERE owner = ? ORDER BY id DESC LIMIT ?",
+                (owner, limit),
+            )
         return [self._decorate(_row(row)) for row in rows]
 
     def cancel(self, job_id: int) -> dict[str, Any] | None:

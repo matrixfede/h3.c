@@ -406,3 +406,39 @@ main{max-width:var(--column);margin:0 auto;padding:0 22px 64px}
   margin:0;font-family:var(--mono);font-size:11px;font-weight:300;line-height:1.7;
   white-space:pre-wrap;color:var(--muted);
 }
+
+/* ── the door (R30): one column, same voice as the rest of the page ────── */
+.checking{
+  max-width:var(--column);margin:20vh auto 0;text-align:center;
+  color:var(--muted);font-size:14px;
+}
+.auth{max-width:380px;margin:14vh auto 0;padding:0 22px}
+.auth h1{font-family:var(--serif);font-size:30px;font-weight:400;margin:0 0 22px}
+.auth .field{margin-bottom:14px}
+.auth .field .hint{color:var(--muted);font-size:12px}
+.auth .go{margin-top:20px}
+.auth .switch{margin-top:18px;font-size:13.5px;color:var(--muted)}
+.auth .switch button{color:var(--ink);border-bottom:1px dotted var(--line-strong)}
+.auth .switch button:hover{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Signed-in name in the header, with the way out next to it. */
+.whoami{
+  margin-left:14px;font-size:12.5px;color:var(--muted);white-space:nowrap;
+}
+.whoami button{margin-left:8px;font-size:12.5px;color:var(--muted)}
+.whoami button:hover{color:var(--ink)}
+
+/* ── people: accounts and invites, for the administrator ───────────────── */
+.people{padding-top:16px;display:flex;flex-direction:column;gap:10px}
+.people .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.people .who{font-size:14px}
+.people .who em{font-style:normal;color:var(--muted);font-size:12.5px}
+.people input[type="password"]{
+  padding:6px 10px;font:inherit;font-size:13px;color:var(--ink);
+  background:var(--ground);border:1px solid var(--line);border-radius:8px;
+}
+.people .invites .code{
+  font-family:var(--mono);font-size:12px;background:var(--accent-wash);
+  color:var(--ink);padding:4px 10px;border-radius:8px;user-select:all;
+}
+.people .invlist{margin-left:auto;font-size:12.5px;color:var(--muted)}

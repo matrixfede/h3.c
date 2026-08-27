@@ -479,10 +479,13 @@ Docker needs the NVIDIA Container Toolkit; the checkpoint is bind-mounted
 read-only and never enters an image. A local, non-Docker setup and the design
 notes are in [`docs/WEBUI.md`](docs/WEBUI.md).
 
-The service has **no authentication** and binds to `127.0.0.1`. To reach it
-from another machine, set `H3_BIND` to a private address — a Tailscale address,
-or an SSH tunnel — rather than publishing it on the LAN. See
-[`docs/WEBUI.md`](docs/WEBUI.md#security).
+When the UI opens, make the first account: it becomes the administrator, and
+every account after that is made with an invite from the People tab. Videos
+and uploads stay private to the person who made them. The service serves plain
+HTTP and binds to `127.0.0.1`; to reach it from another machine, set
+`H3_BIND` to a private address — a Tailscale address, or an SSH tunnel — and
+put a TLS-terminating reverse proxy in front of it if it is anything but a
+network you trust. See [`docs/WEBUI.md`](docs/WEBUI.md#security).
 
 An optional post-processing stage can hand the finished video to an external
 program. This repository ships no such program and no models: see

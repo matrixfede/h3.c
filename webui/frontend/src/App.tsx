@@ -2,18 +2,28 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 
 import { ApiError, api, watchJob } from "./api";
+import { AuthScreen } from "./components/AuthScreen";
 import { Create, SHAPES } from "./components/Create";
 import { DeleteControl } from "./components/DeleteControl";
 import { Expert } from "./components/Expert";
 import { FineTune } from "./components/FineTune";
 import { LiveStrip } from "./components/LiveStrip";
+import { People } from "./components/People";
 import { References } from "./components/References";
 import { RenderStage } from "./components/RenderStage";
 import { Takes, Waiting } from "./components/Takes";
 import { explain, humanMinutes } from "./copy";
 import { QUALITY_PRESETS } from "./generated/options";
 import { DEFAULT_SPEC, applyQualityPreset } from "./spec";
-import type { Asset, Job, JobSpec, Plugin, SystemInfo, ValidationReport } from "./types";
+import type {
+  Asset,
+  Job,
+  JobSpec,
+  Plugin,
+  SystemInfo,
+  User,
+  ValidationReport,
+} from "./types";
 import { useEstimates } from "./useEstimates";
 
 export function App() {
@@ -26,20 +36,36 @@ export function App() {
   const [refused, setRefused] = useState<string[] | null>(null);
   const [undeleted, setUndeleted] = useState<string | null>(null);
   const [dropNote, setDropNote] = useState<string | null>(null);
+  // Who is at the screen. Undefined while the session is being checked,
+  // null when there is none: the page becomes the door (R30).
+  const [me, setMe] = useState<User | null | undefined>(undefined);
   // Which job is on stage. Null means composing: a job keeps running either way.
   const [staged, setStaged] = useState<number | null>(null);
   const [sheet, setSheet] = useState<{ title: string; body: string; job?: Job } | null>(null);
   // One panel, three tabs. Null means it is closed, which is how it opens.
-  const [panel, setPanel] = useState<"picture" | "references" | "expert" | null>(null);
+  const [panel, setPanel] = useState<
+    "picture" | "references" | "expert" | "people" | null
+  >(null);
   const streams = useRef(new Map<number, () => void>());
 
   const refresh = useCallback(async () => {
-    const [list, library] = await Promise.all([api.jobs(), api.assets()]);
-    setJobs(list);
-    setAssets(library);
+    try {
+      const [list, library] = await Promise.all([api.jobs(), api.assets()]);
+      setJobs(list);
+      setAssets(library);
+    } catch (failure) {
+      if (failure instanceof ApiError && failure.status === 401) setMe(null);
+    }
   }, []);
 
   useEffect(() => {
+    api.me()
+      .then(setMe)
+      .catch(() => setMe(null));
+  }, []);
+
+  useEffect(() => {
+    if (me === null || me === undefined) return;
     /* Fetch on mount. The state updates land in promise callbacks, not in the
      * effect body, so there is no cascading render to avoid here. */
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -47,7 +73,7 @@ export function App() {
     api.capabilities().then((c) => setPlugins(c.plugins ?? [])).catch(() => setPlugins([]));
     void refresh();
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [refresh]);
+  }, [me, refresh]);
 
   // Follow every unfinished job; each stream closes itself when the job ends.
   useEffect(() => {
@@ -113,8 +139,17 @@ export function App() {
       setJobs((current) => [job, ...current]);
       setStaged(job.id);
     } catch (failure) {
+      if (failure instanceof ApiError && failure.status === 401) {
+        setMe(null);
+        return;
+      }
       setRefused(failure instanceof ApiError ? failure.errors : ["The request failed."]);
     }
+  }
+
+  async function signOut() {
+    await api.logout();
+    setMe(null);
   }
 
   async function remove(id: number) {
@@ -172,6 +207,13 @@ export function App() {
   const device = system?.device ?? {};
   const problems = [...blocking, ...(refused ?? [])];
 
+  if (me === undefined) {
+    return <div className="checking">One moment…</div>;
+  }
+  if (me === null) {
+    return <AuthScreen onSignedIn={setMe} />;
+  }
+
   return (
     <div
       data-state={
@@ -195,6 +237,10 @@ export function App() {
               running ? "making a video" : "ready"
             }`
             : (system?.reason ?? "looking for the engine…")}
+        </span>
+        <span className="whoami">
+          {me.username}
+          <button onClick={() => void signOut()}>sign out</button>
         </span>
       </header>
 
@@ -299,6 +345,9 @@ export function App() {
                       ["picture", "Picture"],
                       ["references", `Reference material${spec.references.length ? ` (${spec.references.length})` : ""}`],
                       ["expert", "Expert"],
+                      ...(me.role === "admin"
+                        ? ([["people", "People"]] as const)
+                        : []),
                     ] as const).map(([id, label]) => (
                       <button
                         key={id}
@@ -332,6 +381,9 @@ export function App() {
                   ) : null}
                   {panel === "expert" ? (
                     <Expert spec={spec} system={system} plugins={plugins} onChange={setSpec} />
+                  ) : null}
+                  {panel === "people" && me.role === "admin" ? (
+                    <People me={me} />
                   ) : null}
                 </section>
               ) : null}

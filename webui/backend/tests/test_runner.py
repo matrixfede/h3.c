@@ -9,10 +9,9 @@ import stat
 import time
 
 import pytest
-from fastapi.testclient import TestClient
+from conftest import authed_client
 
 from app.config import Settings
-from app.main import create_app
 
 JOB = {"prompt": "a fox", "width": 512, "height": 512, "frames": 22, "steps": 2}
 
@@ -57,7 +56,7 @@ def _client(tmp_path, script):
         model_dir=tmp_path,
         data_dir=tmp_path / "data",
     )
-    return TestClient(create_app(config))
+    return authed_client(config)
 
 
 def _wait(client, job_id, states, timeout=20.0):
@@ -171,7 +170,7 @@ def test_missing_binary_fails_the_job_with_a_reason(tmp_path):
     config = Settings(
         binary=tmp_path / "absent", model_dir=tmp_path, data_dir=tmp_path / "data"
     )
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         created = client.post("/api/jobs", json=JOB)
         job = _wait(client, created.json()["id"], {"failed", "completed"})
     assert job["state"] == "failed"
@@ -189,12 +188,12 @@ def test_a_job_interrupted_by_a_restart_is_marked_failed(tmp_path):
         model_dir=tmp_path,
         data_dir=tmp_path / "data",
     )
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         created = client.post("/api/jobs", json=JOB)
         _wait(client, created.json()["id"], {"completed", "failed"})
         # Simulate a backend killed while a job was running.
         client.app.state.db.run("UPDATE jobs SET state='running' WHERE id=1")
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         job = client.get("/api/jobs/1").json()
     assert job["state"] == "failed"
     assert job["error"] == "interrupted by a backend restart"
@@ -206,10 +205,10 @@ def test_shutdown_cancels_the_running_job_instead_of_failing_it(tmp_path):
         model_dir=tmp_path,
         data_dir=tmp_path / "data",
     )
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         job_id = client.post("/api/jobs", json=JOB).json()["id"]
         _wait(client, job_id, {"running"})
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         job = client.get(f"/api/jobs/{job_id}").json()
     assert job["state"] == "cancelled"
 
@@ -279,7 +278,6 @@ def test_the_event_stream_of_a_deleted_job_ends_instead_of_hanging(tmp_path):
         _wait(client, job_id, {"completed", "failed"})
         client.delete(f"/api/jobs/{job_id}")
 
-        with client.stream("GET", f"/api/jobs/{job_id}/events") as stream:
-            body = "".join(stream.iter_text())
-    assert "event: error" in body
-    assert "unknown job" in body
+        # R30: an unknown job is a 404 on every endpoint, the stream too —
+        # a foreign id and a deleted one are indistinguishable on purpose.
+        assert client.get(f"/api/jobs/{job_id}/events").status_code == 404

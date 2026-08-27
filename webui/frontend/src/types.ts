@@ -5,6 +5,19 @@ export type ReferenceKind =
   | "video_audio"
   | "audio";
 
+export interface User {
+  id?: number;
+  username: string;
+  role: "admin" | "user";
+  created_at?: string;
+}
+
+export interface Invite {
+  code: string;
+  created_at: string;
+  used: boolean;
+}
+
 export interface Reference {
   kind: ReferenceKind;
   path: string;

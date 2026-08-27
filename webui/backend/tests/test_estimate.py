@@ -1,10 +1,9 @@
 """Time estimates: one request labels every choice on screen."""
 
 import pytest
-from fastapi.testclient import TestClient
+from conftest import authed_client
 
 from app.config import Settings
-from app.main import create_app
 
 SPEC = {
     "prompt": "a fox",
@@ -18,7 +17,7 @@ SPEC = {
 @pytest.fixture
 def client(tmp_path):
     config = Settings(model_dir=tmp_path, data_dir=tmp_path / "data")
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         yield client
 
 

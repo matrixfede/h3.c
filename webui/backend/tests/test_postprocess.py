@@ -4,10 +4,9 @@ import stat
 import time
 
 import pytest
-from fastapi.testclient import TestClient
+from conftest import authed_client
 
 from app.config import Settings
-from app.main import create_app
 from app.postprocess import PluginError, registry, run_stage
 
 JOB = {"prompt": "a fox", "width": 256, "height": 256, "frames": 22, "steps": 2}
@@ -52,7 +51,7 @@ def _client(tmp_path, faceswap_cmd=""):
         data_dir=tmp_path / "data",
         faceswap_cmd=faceswap_cmd,
     )
-    return TestClient(create_app(config))
+    return authed_client(config)
 
 
 def _wait(client, job_id, timeout=20.0):

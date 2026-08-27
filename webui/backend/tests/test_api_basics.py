@@ -3,10 +3,9 @@ import os
 import stat
 
 import pytest
-from fastapi.testclient import TestClient
+from conftest import authed_client
 
 from app.config import Settings
-from app.main import create_app
 from app.system import parse_info
 
 REAL_INFO = """h3-metal 0.1.0-dev
@@ -39,7 +38,7 @@ def client(tmp_path):
         data_dir=tmp_path / "data",
     )
     (tmp_path / "model").mkdir()
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         yield client
 
 
@@ -71,7 +70,7 @@ def test_system_degrades_when_the_binary_is_missing(tmp_path):
         model_dir=tmp_path,
         data_dir=tmp_path / "data",
     )
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         payload = client.get("/api/system").json()
     assert payload["available"] is False
     assert "not found" in payload["reason"]
@@ -83,7 +82,7 @@ def test_system_degrades_when_h3_fails(tmp_path):
         model_dir=tmp_path,
         data_dir=tmp_path / "data",
     )
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         payload = client.get("/api/system").json()
     assert payload["available"] is False
     assert payload["reason"] == "h3: cannot map checkpoint"

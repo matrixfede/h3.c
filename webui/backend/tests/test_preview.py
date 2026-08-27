@@ -6,10 +6,9 @@ import stat
 import time
 
 import pytest
-from fastapi.testclient import TestClient
+from conftest import authed_client
 
 from app.config import Settings
-from app.main import create_app
 
 JOB = {
     "prompt": "a fox",
@@ -55,7 +54,7 @@ def _client(tmp_path):
     binary.write_text(PREVIEWS)
     binary.chmod(binary.stat().st_mode | stat.S_IEXEC)
     config = Settings(binary=binary, model_dir=tmp_path, data_dir=tmp_path / "data")
-    return TestClient(create_app(config))
+    return authed_client(config)
 
 
 def _wait(client, job_id, states, timeout=20.0):

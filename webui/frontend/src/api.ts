@@ -1,9 +1,11 @@
 import type {
   Asset,
   Capabilities,
+  Invite,
   Job,
   JobSpec,
   SystemInfo,
+  User,
   ValidationReport,
 } from "./types";
 
@@ -76,6 +78,36 @@ export const api = {
   previewUrl: (id: number, step: number | null) =>
     `/api/jobs/${id}/preview?step=${step ?? 0}`,
   assetUrl: (id: number) => `/api/assets/${id}/file`,
+
+  me: () => request<User>("/api/auth/me"),
+  login: (username: string, password: string) =>
+    request<User>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  register: (username: string, password: string, invite: string) =>
+    request<User>("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, password, invite: invite || null }),
+    }),
+  logout: async (): Promise<void> => {
+    await fetch("/api/auth/logout", { method: "POST" });
+  },
+  users: () => request<User[]>("/api/users"),
+  invites: () => request<Invite[]>("/api/invites"),
+  createInvite: () => request<{ code: string }>("/api/invites", { method: "POST" }),
+  deleteUser: async (id: number): Promise<void> => {
+    const response = await fetch(`/api/users/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => null);
+      throw new ApiError(response.status, detail?.detail ?? response.statusText);
+    }
+  },
+  resetPassword: (id: number, password: string) =>
+    request<User>(`/api/users/${id}/password`, {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
 };
 
 /** Subscribe to one job's progress; returns an unsubscribe function. */

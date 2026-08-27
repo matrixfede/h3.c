@@ -114,9 +114,7 @@ def test_the_stored_progress_only_ever_grows(tmp_path):
     import stat
     import time
 
-    from fastapi.testclient import TestClient
-
-    from app.main import create_app
+    from conftest import authed_client
 
     script = (
         "#!/bin/sh\n"
@@ -131,7 +129,7 @@ def test_the_stored_progress_only_ever_grows(tmp_path):
     binary.chmod(binary.stat().st_mode | stat.S_IEXEC)
     config = Settings(binary=binary, model_dir=tmp_path, data_dir=tmp_path / "data")
     seen: list[float] = []
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         client.app.state.runner.add_listener(lambda job: seen.append(job["progress"]))
         job_id = client.post(
             "/api/jobs",

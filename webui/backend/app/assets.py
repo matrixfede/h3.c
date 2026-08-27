@@ -109,8 +109,14 @@ def store(
     root: Path,
     max_bytes: int,
     ffprobe: str = "ffprobe",
+    owner: int | None = None,
 ) -> dict[str, Any]:
-    """Validate, deduplicate and record one upload."""
+    """Validate, deduplicate and record one upload.
+
+    Deduplication is per owner (R30): the same bytes may be held by two
+    people, each seeing it in their own library, while the file on disk —
+    named by its hash — stays shared.
+    """
     declared = kind_from_suffix(Path(filename).suffix)
     size = source.stat().st_size
     if size == 0:
@@ -127,7 +133,9 @@ def store(
         )
 
     digest = _sha256(source)
-    existing = database.query_one("SELECT * FROM assets WHERE sha256 = ?", (digest,))
+    existing = database.query_one(
+        "SELECT * FROM assets WHERE sha256 = ? AND owner IS ?", (digest, owner)
+    )
     if existing:
         return _row_to_dict(existing) | {"duplicate": True}
 
@@ -142,19 +150,30 @@ def store(
         "notes": _notes(detected),
     }
     asset_id = database.run(
-        "INSERT INTO assets (sha256, kind, filename, path, bytes, metadata) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (digest, detected.kind, filename, str(target), size, json.dumps(metadata)),
+        "INSERT INTO assets (sha256, kind, filename, path, bytes, metadata, owner) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            digest,
+            detected.kind,
+            filename,
+            str(target),
+            size,
+            json.dumps(metadata),
+            owner,
+        ),
     )
     row = database.query_one("SELECT * FROM assets WHERE id = ?", (asset_id,))
     return _row_to_dict(row) | {"duplicate": False}
 
 
-def listing(database: Database) -> list[dict[str, Any]]:
-    return [
-        _row_to_dict(row)
-        for row in database.query_all("SELECT * FROM assets ORDER BY id DESC")
-    ]
+def listing(database: Database, owner: int | None = None) -> list[dict[str, Any]]:
+    if owner is None:
+        rows = database.query_all("SELECT * FROM assets ORDER BY id DESC")
+    else:
+        rows = database.query_all(
+            "SELECT * FROM assets WHERE owner = ? ORDER BY id DESC", (owner,)
+        )
+    return [_row_to_dict(row) for row in rows]
 
 
 def _notes(detected: Probe) -> list[str]:

@@ -4,11 +4,10 @@ import shutil
 import subprocess
 
 import pytest
-from fastapi.testclient import TestClient
+from conftest import authed_client
 
 from app.assets import AssetError, kind_from_suffix
 from app.config import Settings
-from app.main import create_app
 
 pytestmark = pytest.mark.skipif(
     shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None,
@@ -63,7 +62,7 @@ def _write(path, text):
 @pytest.fixture
 def client(tmp_path):
     config = Settings(data_dir=tmp_path / "data", model_dir=tmp_path)
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         yield client
 
 
@@ -132,7 +131,7 @@ def test_oversized_upload_is_refused(tmp_path, media):
     config = Settings(
         data_dir=tmp_path / "data", model_dir=tmp_path, max_upload_bytes=64
     )
-    with TestClient(create_app(config)) as client:
+    with authed_client(config) as client:
         response = _post(client, media["audio"])
     assert response.status_code == 400
     assert "over the" in response.json()["detail"]

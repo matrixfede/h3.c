@@ -102,12 +102,25 @@ later jobs, as anchors or as ordered references.
 
 ## Security
 
-**There is no authentication.** The backend runs `h3` with parameters supplied
-by whoever can reach it, accepts file uploads, and serves generated media.
-Everything binds to `127.0.0.1` by default.
+**Every call needs an account.** The whole API sits behind a session cookie:
+the first person to register becomes the administrator, and every account
+after that is made with a single-use invite from the People tab. Passwords
+are hashed with argon2id, sessions live in the database (a logout or a
+password reset ends them at once), and five wrong passwords in fifteen
+minutes pause that username. Videos and uploads belong to the person who made
+them; an id that is not yours answers 404, the same as one that does not
+exist.
 
-Do not expose these ports on an untrusted network. Reaching the UI from
-another machine means putting something that authenticates in front of it.
+What this does **not** do: there is no TLS. The service serves plain HTTP, so
+passwords and cookies travel in the clear on whatever network carries them.
+Outside a network you trust, put a TLS-terminating reverse proxy (Caddy,
+nginx, Traefik) in front of it; binding to a private address is not a
+substitute.
+
+A fresh installation also lets the first person who reaches it make the
+administrator account. Register before anyone else can.
+
+Everything binds to `127.0.0.1` by default.
 
 **A private overlay network.** With [Tailscale](https://tailscale.com), publish
 the UI on the tailnet address instead of the loopback: only your own devices
@@ -131,12 +144,12 @@ ssh -N -L 8080:127.0.0.1:8080 you@the-machine
 
 Then open <http://localhost:8080> there.
 
-**Publishing on the LAN** (`H3_BIND=0.0.0.0`) gives everyone on the network the
-GPU, the uploads and every generated file, with no password. If you do it
-anyway, two things to know: only port 8080 needs publishing, because nginx
-proxies `/api`; and a host firewall will not save you — ports published by
-Docker are DNAT-ed in the `DOCKER-USER` chain, which `ufw` does not filter, so
-a `ufw deny` rule has no effect on them.
+**Publishing on the LAN** (`H3_BIND=0.0.0.0`) gives everyone on the network
+the login screen, and whoever arrives first the administrator account. If you
+do it anyway, two things to know: only port 8080 needs publishing, because
+nginx proxies `/api`; and a host firewall will not save you — ports published
+by Docker are DNAT-ed in the `DOCKER-USER` chain, which `ufw` does not filter,
+so a `ufw deny` rule has no effect on them.
 
 ## Post-processing
 
