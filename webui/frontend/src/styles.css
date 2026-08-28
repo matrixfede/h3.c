@@ -50,7 +50,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
   display:flex;align-items:baseline;gap:14px;
   max-width:var(--column);margin:0 auto;padding:26px 22px 0;
 }
-.wordmark{font-family:var(--serif);font-size:19px;letter-spacing:-.01em}
+.wordmark{font-family:var(--serif);font-size:19px;letter-spacing:-.01em;
+  display:inline-flex;align-items:center;gap:9px}
+.wordmark .mark{color:var(--ink);flex:0 0 auto}
 .wordmark b{font-weight:400}
 .wordmark span{font-style:italic;color:var(--muted)}
 .status{
@@ -413,6 +415,7 @@ main{max-width:var(--column);margin:0 auto;padding:0 22px 64px}
   color:var(--muted);font-size:14px;
 }
 .auth{max-width:380px;margin:14vh auto 0;padding:0 22px}
+.auth-mark{color:var(--ink);margin-bottom:18px}
 .auth h1{font-family:var(--serif);font-size:30px;font-weight:400;margin:0 0 22px}
 .auth .field{margin-bottom:14px}
 .auth .field .hint{color:var(--muted);font-size:12px}

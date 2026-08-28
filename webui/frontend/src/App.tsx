@@ -8,6 +8,7 @@ import { DeleteControl } from "./components/DeleteControl";
 import { Expert } from "./components/Expert";
 import { FineTune } from "./components/FineTune";
 import { LiveStrip } from "./components/LiveStrip";
+import { LogoMark } from "./components/Logo";
 import { People } from "./components/People";
 import { References } from "./components/References";
 import { RenderStage } from "./components/RenderStage";
@@ -228,7 +229,8 @@ export function App() {
     >
       <header className="bar">
         <span className="wordmark">
-          <b>h3.c</b> <span>studio</span>
+          <LogoMark size={20} />
+          <b>h3c</b> <span>studio</span>
         </span>
         <span className="status">
           <span className="dot" />

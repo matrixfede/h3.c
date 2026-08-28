@@ -67,7 +67,7 @@ def create_app(config: Settings | None = None) -> FastAPI:
         app.state.runner.shutdown()
         app.state.db.close()
 
-    app = FastAPI(title="h3.c Studio", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="h3c studio", version="0.1.0", lifespan=lifespan)
 
     @app.middleware("http")
     async def require_session(request: Request, call_next):

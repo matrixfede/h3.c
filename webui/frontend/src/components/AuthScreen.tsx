@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { ApiError, api } from "../api";
+import { LogoMark } from "./Logo";
 import type { User } from "../types";
 
 /** The door: one column, two states, the same look as the rest of the page.
@@ -42,6 +43,9 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: (user: User) => void })
   return (
     <main>
       <div className="auth">
+        <div className="auth-mark" aria-hidden="true">
+          <LogoMark size={44} />
+        </div>
         <h1>{mode === "login" ? "Welcome back" : "Make your account"}</h1>
 
         <label className="field">
