@@ -434,6 +434,15 @@ main{max-width:var(--column);margin:0 auto;padding:0 22px 64px}
   margin-left:0;margin-right:10px;color:var(--ink);font-weight:500;
 }
 .whoami .people-door:hover{color:var(--accent)}
+.whoami .people-door.on{color:var(--accent)}
+
+/* ── people as a place of its own (T130) ─────────────────────────────── */
+.people-page{max-width:var(--column);margin:0 auto}
+.people-head{display:flex;align-items:baseline;margin:38px 0 4px}
+.people-head h2{font-family:var(--serif);font-size:27px;font-weight:400}
+.people-head .back{margin-left:auto;color:var(--muted);font-size:13.5px}
+.people-head .back:hover{color:var(--ink)}
+.people-page .live{margin-top:18px;border-bottom:1px solid var(--line);padding-bottom:16px}
 
 /* ── people: accounts and invites, for the administrator ───────────────── */
 .people{padding-top:16px;display:flex;flex-direction:column;gap:10px}

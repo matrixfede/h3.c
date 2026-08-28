@@ -44,9 +44,11 @@ export function App() {
   const [staged, setStaged] = useState<number | null>(null);
   const [sheet, setSheet] = useState<{ title: string; body: string; job?: Job } | null>(null);
   // One panel, three tabs. Null means it is closed, which is how it opens.
-  const [panel, setPanel] = useState<
-    "picture" | "references" | "expert" | "people" | null
-  >(null);
+  const [panel, setPanel] = useState<"picture" | "references" | "expert" | null>(
+    null,
+  );
+  // People is a place of its own (T130), not a tab inside "Everything else".
+  const [view, setView] = useState<"studio" | "people">("studio");
   const streams = useRef(new Map<number, () => void>());
 
   const refresh = useCallback(async () => {
@@ -245,11 +247,8 @@ export function App() {
              alone, instead of hiding inside "Everything else". */}
           {me.role === "admin" ? (
             <button
-              className="people-door"
-              onClick={() => {
-                setStaged(null);
-                setPanel("people");
-              }}
+              className={`people-door${view === "people" ? " on" : ""}`}
+              onClick={() => setView(view === "people" ? "studio" : "people")}
             >
               People
             </button>
@@ -260,6 +259,28 @@ export function App() {
       </header>
 
       <main>
+        {view === "people" && me.role === "admin" ? (
+          <div className="people-page">
+            <div className="people-head">
+              <h2>People</h2>
+              <button className="back" onClick={() => setView("studio")}>
+                ← back to the studio
+              </button>
+            </div>
+            {/* A video keeps being made while the admin is here. */}
+            {running ? (
+              <LiveStrip
+                job={running}
+                onWatch={() => {
+                  setView("studio");
+                  setStaged(running.id);
+                }}
+                onStop={() => void cancel(running.id)}
+              />
+            ) : null}
+            <People me={me} />
+          </div>
+        ) : (
         <div className="stage">
           {onStage ? (
             <>
@@ -360,9 +381,6 @@ export function App() {
                       ["picture", "Picture"],
                       ["references", `Reference material${spec.references.length ? ` (${spec.references.length})` : ""}`],
                       ["expert", "Expert"],
-                      ...(me.role === "admin"
-                        ? ([["people", "People"]] as const)
-                        : []),
                     ] as const).map(([id, label]) => (
                       <button
                         key={id}
@@ -397,22 +415,22 @@ export function App() {
                   {panel === "expert" ? (
                     <Expert spec={spec} system={system} plugins={plugins} onChange={setSpec} />
                   ) : null}
-                  {panel === "people" && me.role === "admin" ? (
-                    <People me={me} />
-                  ) : null}
                 </section>
               ) : null}
 
             </>
           )}
         </div>
+        )}
       </main>
 
+      {view === "people" ? null : (
       <Takes
         jobs={jobs}
         onOpen={(job) => setStaged(job.id)}
         onDelete={(job) => void remove(job.id)}
       />
+      )}
       {undeleted ? (
         <p className="note undeleted" role="status">
           {undeleted}
