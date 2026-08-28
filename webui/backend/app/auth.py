@@ -5,8 +5,14 @@ hash string carries its parameters, so a future re-tune keeps reading old
 hashes. Sessions live in a table, not in a JWT: the only client is the UI's
 browser, and a table means a logout or a deleted account invalidates its
 sessions immediately.
+
+The administrator does not come from the door: it is declared by the
+deployment (R33) — `H3_ADMIN_USERNAME` and `H3_ADMIN_PASSWORD` — and is
+created once, on the first start of an empty database. After that the
+environment is ignored and passwords are managed from the People tab.
 """
 
+import logging
 import re
 import secrets
 import time
@@ -15,6 +21,8 @@ from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
 from .db import Database
+
+log = logging.getLogger(__name__)
 
 _hasher = PasswordHasher()
 
@@ -80,6 +88,26 @@ def backfill_ownerless_rows(db: Database, user_id: int) -> None:
     """Whatever existed before accounts did belongs to the first admin (D30.4)."""
     db.run("UPDATE jobs SET owner = ? WHERE owner IS NULL", (user_id,))
     db.run("UPDATE assets SET owner = ? WHERE owner IS NULL", (user_id,))
+
+
+def bootstrap_admin(db: Database, username: str, password: str) -> int | None:
+    """Create the administrator from the deployment configuration (R33).
+
+    Runs on an empty users table only: afterwards the environment has no say,
+    and the account is managed like any other (People tab). Returns the id of
+    the account it made, or None.
+    """
+    if user_count(db) > 0:
+        return None
+    if not password:
+        log.warning(
+            "no accounts exist and H3_ADMIN_PASSWORD is not set: "
+            "nobody can sign in until one is configured"
+        )
+        return None
+    user_id = create_user(db, username, password, "admin")
+    backfill_ownerless_rows(db, user_id)
+    return user_id
 
 
 # ── sessions ───────────────────────────────────────────────────────────────

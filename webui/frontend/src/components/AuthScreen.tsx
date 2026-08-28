@@ -64,7 +64,7 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: (user: User) => void })
         {mode === "register" ? (
           <label className="field">
             <span>
-              Invite <span className="hint">empty for the very first account</span>
+              Invite <span className="hint">from the administrator</span>
             </span>
             <input
               value={invite}
@@ -103,8 +103,8 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: (user: User) => void })
           )}
         </p>
         <p className="note">
-          The first person to register becomes the administrator; after that,
-          accounts are made only with an invite.
+          The administrator account is defined on the server; every other
+          account is made with a single-use invite.
         </p>
       </div>
     </main>

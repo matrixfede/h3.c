@@ -102,14 +102,16 @@ later jobs, as anchors or as ordered references.
 
 ## Security
 
-**Every call needs an account.** The whole API sits behind a session cookie:
-the first person to register becomes the administrator, and every account
-after that is made with a single-use invite from the People tab. Passwords
-are hashed with argon2id, sessions live in the database (a logout or a
-password reset ends them at once), and five wrong passwords in fifteen
-minutes pause that username. Videos and uploads belong to the person who made
-them; an id that is not yours answers 404, the same as one that does not
-exist.
+**Every call needs an account.** The whole API sits behind a session cookie.
+The administrator account is defined on the server — `H3_ADMIN_USERNAME` and
+`H3_ADMIN_PASSWORD` in `.env` — and is created once, on the first start of an
+empty database; afterwards those values are ignored and the password is
+managed from the People tab. Every other account is made with a single-use
+invite from that tab. Passwords are hashed with argon2id, sessions live in
+the database (a logout or a password reset ends them at once), and five wrong
+passwords in fifteen minutes pause that username. Videos and uploads belong
+to the person who made them; an id that is not yours answers 404, the same
+as one that does not exist.
 
 What this does **not** do: there is no TLS. The service serves plain HTTP, so
 passwords and cookies travel in the clear on whatever network carries them.
@@ -117,8 +119,9 @@ Outside a network you trust, put a TLS-terminating reverse proxy (Caddy,
 nginx, Traefik) in front of it; binding to a private address is not a
 substitute.
 
-A fresh installation also lets the first person who reaches it make the
-administrator account. Register before anyone else can.
+A fresh installation with no `H3_ADMIN_PASSWORD` has no administrator and
+no way in: the backend says so in its log at startup. Set the two variables
+before the first start.
 
 Everything binds to `127.0.0.1` by default.
 
@@ -145,7 +148,7 @@ ssh -N -L 8080:127.0.0.1:8080 you@the-machine
 Then open <http://localhost:8080> there.
 
 **Publishing on the LAN** (`H3_BIND=0.0.0.0`) gives everyone on the network
-the login screen, and whoever arrives first the administrator account. If you
+the login screen — including attempts at the administrator password. If you
 do it anyway, two things to know: only port 8080 needs publishing, because
 nginx proxies `/api`; and a host firewall will not save you — ports published
 by Docker are DNAT-ed in the `DOCKER-USER` chain, which `ufw` does not filter,

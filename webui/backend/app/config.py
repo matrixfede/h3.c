@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     # Post-processing plugins: an executable path enables the plugin.
     # Nothing is installed or downloaded by this repository.
     faceswap_cmd: str = ""
+    # The administrator account, defined by the deployment (R33). An empty
+    # password means "not configured": the app starts with no administrator
+    # and says so in the log.
+    admin_username: str = "admin"
+    admin_password: str = ""
 
 
 @lru_cache

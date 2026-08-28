@@ -24,6 +24,9 @@ services:
     environment:
       H3_MODEL_DIR: /models
       H3_DATA_DIR: /data
+      # The administrator account, created once on an empty database.
+      H3_ADMIN_USERNAME: ${H3_ADMIN_USERNAME:-admin}
+      H3_ADMIN_PASSWORD: ${H3_ADMIN_PASSWORD:?set H3_ADMIN_PASSWORD in .env}
       H3_MAX_UPLOAD_BYTES: ${H3_MAX_UPLOAD_BYTES:-536870912}
       # Post-processing stays off unless you install a runtime yourself.
       H3_FACESWAP_CMD: ${H3_FACESWAP_CMD:-}

@@ -58,6 +58,9 @@ def create_app(config: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         app.state.config = config
         app.state.db = Database(config.data_dir / "h3.sqlite3")
+        auth.bootstrap_admin(
+            app.state.db, config.admin_username, config.admin_password
+        )
         app.state.runner = JobRunner(app.state.db, config)
         app.state.runner.start()
         yield
@@ -95,26 +98,20 @@ def create_app(config: Settings | None = None) -> FastAPI:
         if errors:
             raise HTTPException(status_code=422, detail={"errors": errors})
 
-        first = auth.user_count(db) == 0
-        if not first:
-            invite = db.query_one(
-                "SELECT 1 FROM invites WHERE code = ? AND used_at IS NULL",
-                (payload.invite or "",),
-            )
-            if invite is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="registration needs an invite from the administrator",
-                )
-
-        user_id = auth.create_user(
-            db, payload.username, payload.password, "admin" if first else "user"
+        # Accounts are made with invites, full stop (R33): the administrator
+        # comes from the server configuration, not from the door.
+        invite = db.query_one(
+            "SELECT 1 FROM invites WHERE code = ? AND used_at IS NULL",
+            (payload.invite or "",),
         )
-        if first:
-            # What existed before accounts did gets a name (D30.4).
-            auth.backfill_ownerless_rows(db, user_id)
-        else:
-            auth.consume_invite(db, payload.invite or "", user_id)
+        if invite is None:
+            raise HTTPException(
+                status_code=400,
+                detail="registration needs an invite from the administrator",
+            )
+
+        user_id = auth.create_user(db, payload.username, payload.password)
+        auth.consume_invite(db, payload.invite or "", user_id)
         user = db.query_one("SELECT * FROM users WHERE id = ?", (user_id,))
         return {"username": user["username"], "role": user["role"]}
 
