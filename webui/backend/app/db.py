@@ -110,6 +110,11 @@ MIGRATIONS: list[str] = [
     CREATE UNIQUE INDEX IF NOT EXISTS uq_assets_sha_owner
         ON assets (sha256, owner);
     """,
+    # Version 5 — the restart sweep must know whether a job's h3 survived the
+    # crash: jobs record the pid of the process running them (R27, T105).
+    """
+    ALTER TABLE jobs ADD COLUMN pid INTEGER;
+    """,
 ]
 
 LATEST_VERSION = len(MIGRATIONS)

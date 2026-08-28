@@ -5,6 +5,7 @@ carriage return, an mp4 written where -o points, and h3-prefixed error lines.
 No GPU and no checkpoint are involved.
 """
 
+import os
 import stat
 import time
 
@@ -281,3 +282,105 @@ def test_the_event_stream_of_a_deleted_job_ends_instead_of_hanging(tmp_path):
         # R30: an unknown job is a 404 on every endpoint, the stream too —
         # a foreign id and a deleted one are indistinguishable on purpose.
         assert client.get(f"/api/jobs/{job_id}/events").status_code == 404
+
+
+def test_a_running_job_records_its_process(tmp_path):
+    with _client(tmp_path, SLOW) as client:
+        job_id = client.post("/api/jobs", json=JOB).json()["id"]
+        _wait(client, job_id, {"running"})
+        pid = client.app.state.db.query_one(
+            "SELECT pid FROM jobs WHERE id = ?", (job_id,)
+        )["pid"]
+        assert pid is not None and pid > 0
+        client.post(f"/api/jobs/{job_id}/cancel")
+        _wait(client, job_id, {"cancelled", "failed"})
+
+
+def test_a_restart_stops_a_live_h3_before_failing_its_job(tmp_path):
+    config = Settings(
+        binary=_binary(tmp_path, SLOW),
+        model_dir=tmp_path,
+        data_dir=tmp_path / "data",
+    )
+    with authed_client(config) as client:
+        job_id = client.post("/api/jobs", json=JOB).json()["id"]
+        _wait(client, job_id, {"running"})
+        pid = client.app.state.db.query_one(
+            "SELECT pid FROM jobs WHERE id = ?", (job_id,)
+        )["pid"]
+        assert pid
+
+        # A crash, not a shutdown: the first backend gets no graceful stop,
+        # and a second startup sweeps over the job while h3 is still alive.
+        second_config = Settings(
+            binary=tmp_path / "h3", model_dir=tmp_path, data_dir=tmp_path / "data"
+        )
+        with authed_client(second_config) as second:
+            job = second.get(f"/api/jobs/{job_id}").json()
+            assert job["state"] == "failed"
+
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            break
+        time.sleep(0.05)
+    else:
+        pytest.fail("the live h3 survived the restart sweep")
+
+
+def test_the_restart_sweep_names_a_live_process_it_stopped(tmp_path):
+    import subprocess
+
+    from app.db import Database
+
+    config = Settings(
+        binary=tmp_path / "absent", model_dir=tmp_path, data_dir=tmp_path / "data"
+    )
+    child = subprocess.Popen(
+        ["sleep", "30"], stdout=subprocess.DEVNULL, start_new_session=True
+    )
+    database = Database(config.data_dir / "h3.sqlite3")
+    database.run(
+        "INSERT INTO jobs (state, prompt, params, pid)"
+        " VALUES ('running', 'x', '{}', ?)",
+        (child.pid,),
+    )
+    database.close()
+
+    with authed_client(config) as client:
+        job = client.get("/api/jobs/1").json()
+        assert job["state"] == "failed"
+        assert "still running" in (job["error"] or "")
+
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        if child.poll() is not None:
+            break
+        time.sleep(0.05)
+    assert child.poll() is not None, "the process survived the sweep"
+
+
+def test_the_restart_sweep_lets_a_dead_process_go(tmp_path):
+    import subprocess
+
+    from app.db import Database
+
+    config = Settings(
+        binary=tmp_path / "absent", model_dir=tmp_path, data_dir=tmp_path / "data"
+    )
+    child = subprocess.Popen(["true"], stdout=subprocess.DEVNULL)
+    child.wait()
+    database = Database(config.data_dir / "h3.sqlite3")
+    database.run(
+        "INSERT INTO jobs (state, prompt, params, pid)"
+        " VALUES ('running', 'x', '{}', ?)",
+        (child.pid,),
+    )
+    database.close()
+
+    with authed_client(config) as client:
+        job = client.get("/api/jobs/1").json()
+        assert job["state"] == "failed"
+        assert job["error"] == "interrupted by a backend restart"

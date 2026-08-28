@@ -129,3 +129,49 @@ def test_a_failing_plugin_fails_the_job_and_keeps_the_raw_video(tmp_path):
 def test_an_unknown_plugin_name_is_refused(tmp_path):
     with pytest.raises(PluginError, match="unknown post-processing plugin"):
         run_stage(Settings(), tmp_path / "video.mp4", ["upscale"])
+
+
+# A plugin that leaves a grandchild behind: the timeout must take the whole
+# session down, not just the plugin (T106).
+SPAWNS_HELPER = r"""#!/bin/sh
+input=""; output=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) input="$2"; shift;;
+    --output) output="$2"; shift;;
+  esac
+  shift
+done
+sleep 30 &
+printf '%s' "$!" > "$(dirname "$0")/helper.pid"
+sleep 30
+"""
+
+
+def test_a_timed_out_plugin_takes_its_helpers_down_with_it(tmp_path):
+    import os
+
+    command = _executable(tmp_path / "spawner", SPAWNS_HELPER)
+    config = Settings(faceswap_cmd=str(command))
+    video = tmp_path / "video.mp4"
+    video.write_text("raw video")
+
+    with pytest.raises(PluginError, match="timed out"):
+        run_stage(config, video, ["faceswap"], timeout=1.0)
+
+    pid_file = tmp_path / "helper.pid"
+    deadline = time.time() + 5
+    while time.time() < deadline and not pid_file.is_file():
+        time.sleep(0.05)
+    assert pid_file.is_file(), "the plugin never spawned its helper"
+    helper_pid = int(pid_file.read_text())
+
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        try:
+            os.kill(helper_pid, 0)
+        except OSError:
+            break
+        time.sleep(0.05)
+    else:
+        pytest.fail("the plugin's helper survived the timeout")

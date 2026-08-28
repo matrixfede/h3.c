@@ -16,7 +16,10 @@ unavailable until the operator points the environment variable at an
 executable they installed themselves.
 """
 
+import contextlib
+import os
 import shutil
+import signal
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -104,19 +107,32 @@ def run_stage(
             raise PluginError(f"post-processing plugin {name} is unavailable")
         produced = video.with_name(f"{video.stem}-{name}{video.suffix}")
         try:
-            done = subprocess.run(  # noqa: S603 - argv list, no shell
+            process = subprocess.Popen(  # noqa: S603 - argv list, no shell
                 [plugin.command, "--input", str(video), "--output", str(produced)],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                timeout=timeout,
-                check=False,
+                start_new_session=True,
             )
-        except (OSError, subprocess.TimeoutExpired) as error:
+        except OSError as error:
             raise PluginError(
                 f"post-processing {name} could not run: {error}"
             ) from error
-        if done.returncode != 0 or not produced.is_file():
-            detail = (done.stderr or done.stdout or "").strip().splitlines()
+        try:
+            out, err = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # Kill the whole session, not just the plugin: it may have
+            # spawned helpers of its own, and an orphan would keep working
+            # on the video after the job is declared failed (T106).
+            with contextlib.suppress(OSError):
+                os.killpg(process.pid, signal.SIGKILL)
+            with contextlib.suppress(OSError):
+                process.wait(timeout=10)
+            raise PluginError(
+                f"post-processing {name} timed out after {timeout:.0f} s"
+            ) from None
+        if process.returncode != 0 or not produced.is_file():
+            detail = (err or out or "").strip().splitlines()
             last = detail[-1] if detail else "no output"
             raise PluginError(f"post-processing {name} failed: {last}")
         produced.replace(video)

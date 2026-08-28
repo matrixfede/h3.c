@@ -58,11 +58,29 @@ class JobRunner:
 
     # ── lifecycle ────────────────────────────────────────────────────────
     def start(self) -> None:
-        # A previous backend may have died mid-job: nothing is running now.
-        self.db.run(
-            "UPDATE jobs SET state='failed', finished_at=datetime('now'), "
-            "error='interrupted by a backend restart' WHERE state='running'"
-        )
+        # A previous backend may have died mid-job, but h3 is born with
+        # start_new_session and outlives it: before declaring anything,
+        # check the recorded pid and stop whatever is still alive (T105).
+        for row in self.db.query_all(
+            "SELECT id, pid FROM jobs WHERE state = 'running'"
+        ):
+            pid = row["pid"]
+            if pid is not None and _process_alive(pid):
+                # The pid can in principle have been reused since the crash;
+                # that risk is accepted, because leaving a live writer on a
+                # directory the UI may delete is worse.
+                _signal_group(pid, signal.SIGKILL)
+                error = (
+                    "interrupted by a backend restart "
+                    "(its process was still running, and was stopped)"
+                )
+            else:
+                error = "interrupted by a backend restart"
+            self.db.run(
+                "UPDATE jobs SET state='failed', finished_at=datetime('now'), "
+                "error=?, pid=NULL WHERE id=?",
+                (error, row["id"]),
+            )
         self._thread.start()
         self._wake.set()
 
@@ -259,6 +277,10 @@ class JobRunner:
             self._finish(job_id, "failed", error=f"cannot start h3: {error}")
             return
 
+        # Recorded for the restart sweep (T105): h3 runs in its own session,
+        # so the pid doubles as the group id.
+        self.db.run("UPDATE jobs SET pid = ? WHERE id = ?", (process.pid, job_id))
+
         with self._lock:
             self._process = process
             self._pgid = process.pid
@@ -374,13 +396,13 @@ class JobRunner:
         if state == "completed":
             self.db.run(
                 "UPDATE jobs SET state=?, error=?, finished_at=datetime('now'), "
-                "progress=1.0 WHERE id=?",
+                "progress=1.0, pid=NULL WHERE id=?",
                 (state, error, job_id),
             )
         else:
             self.db.run(
-                "UPDATE jobs SET state=?, error=?, finished_at=datetime('now') "
-                "WHERE id=?",
+                "UPDATE jobs SET state=?, error=?, finished_at=datetime('now'), "
+                "pid=NULL WHERE id=?",
                 (state, error, job_id),
             )
         self._emit(self.get(job_id))
@@ -399,6 +421,17 @@ def _signal_group(pgid: int, number: int) -> None:
     """Signal the whole group, including children the leader left behind."""
     with contextlib.suppress(ProcessLookupError, PermissionError, OSError):
         os.killpg(pgid, number)
+
+
+def _process_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except OSError:
+        # Exists but belongs to someone else: not ours to stop.
+        return False
+    return True
 
 
 def _reason(tail: list[str], code: int) -> str:

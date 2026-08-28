@@ -1,10 +1,10 @@
-# h3.c Studio — the web UI
+# h3c studio — the web UI
 
 A browser front end for `h3`. Everything the CLI accepts is here: duration,
 canvas, sampler, first/last frame anchors, ordered Ref2VA references, the
 memory and parity switches, and a live preview of the denoising.
 
-A clickable mockup of the interface is in [`docs/mockup/index.html`](mockup/index.html).
+The design direction is documented in the mockups under [`docs/mockup/`](mockup/); `v4.html` is the current one, and `logo.html` shows the mark.
 
 ## What you need
 
@@ -89,16 +89,30 @@ browser ── /api ──▶ FastAPI ──▶ serial queue ──▶ ./h3 (one
   feeds both the backend validator and the generated TypeScript module, and a
   test fails if it drifts from `main.c`.
 
-## Options
+## The interface
 
-The Simple tab covers prompt, duration, format, a quality preset, first/last
-frame and seed. The Advanced tab exposes everything else, including the ten
-`--use-slower-*` parity flags. Two CLI options are deliberately absent:
-`--show` and `--zoom` are terminal graphics protocols with no meaning in a
-browser — the live preview uses `--preview-dir` instead.
+Composition reads as a sentence: the prompt, then one line of choices —
+length, shape, quality, variation — where each word opens where it stands
+and carries its own time estimate. Photos to start from, end on, or keep as
+references hang off the prompt as chips; files dropped anywhere on the page
+land in the library.
 
-Uploaded images, clips and soundtracks stay in a library and can be reused in
-later jobs, as anchors or as ordered references.
+Everything else lives in one panel with three tabs — Picture, Reference
+material and Expert — and Expert exposes every CLI option, including the ten
+`--use-slower-*` parity flags, with the exact command-line name. Two CLI
+options are deliberately absent: `--show` and `--zoom` are terminal graphics
+protocols with no meaning in a browser — the live preview uses
+`--preview-dir` instead.
+
+Finished videos form a gallery that plays on hover. While a video is being
+made, the page shows the frame developing pass by pass, with a weighted
+progress bar calibrated on this machine, and generation keeps running while
+you compose the next one.
+
+The administrator has a People page of its own: accounts, single-use
+invites, password resets and deletions. Uploaded images, clips and
+soundtracks stay in a library and can be reused in later jobs, as anchors or
+as ordered references.
 
 ## Security
 
@@ -106,7 +120,7 @@ later jobs, as anchors or as ordered references.
 The administrator account is defined on the server — `H3_ADMIN_USERNAME` and
 `H3_ADMIN_PASSWORD` in `.env` — and is created once, on the first start of an
 empty database; afterwards those values are ignored and the password is
-managed from the People tab. Every other account is made with a single-use
+managed from the People page. Every other account is made with a single-use
 invite from that tab. Passwords are hashed with argon2id, sessions live in
 the database (a logout or a password reset ends them at once), and five wrong
 passwords in fifteen minutes pause that username. Videos and uploads belong

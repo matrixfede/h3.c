@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — prepares a machine to run h3.c Studio.
+# install.sh — prepares a machine to run h3c studio.
 #
 # It checks the prerequisites, puts the repository in place and writes a .env.
 # By default it downloads nothing: the 465 GB checkpoint and the optional

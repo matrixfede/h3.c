@@ -4,7 +4,7 @@ Native MiniMax-H3 inference in C for NVIDIA CUDA on Linux and Metal on Apple
 Silicon. Prompt-to-video/audio, first/last-frame conditioning, and ordered
 Ref2VA image/video/audio references work end to end on both backends.
 
-A browser front end is included: **h3.c Studio** exposes every generation
+A browser front end is included: **h3c studio** exposes every generation
 option of the CLI, with a live preview of the denoising and a weighted
 progress bar. If you would rather click than type, jump to
 [Web UI](#web-ui) — the rest of this document is the CLI.
@@ -465,7 +465,7 @@ decoded duration is capped at 15 seconds.
 
 ## Web UI
 
-`h3.c Studio` is a small FastAPI backend and a React front end that drive the
+`h3c studio` is a small FastAPI backend and a React front end that drive the
 same `h3` binary this document describes. Every CLI option is reachable from
 the browser, generation progress streams live, and uploaded photos and clips
 stay in a reusable library.
@@ -482,8 +482,9 @@ notes are in [`docs/WEBUI.md`](docs/WEBUI.md).
 Sign in with the administrator account you define in `.env`
 (`H3_ADMIN_USERNAME`, `H3_ADMIN_PASSWORD`): it is created once, on the first
 start of an empty database. Every other account is made with a single-use
-invite from the People tab, and videos and uploads stay private to the person
-who made them. The service serves plain HTTP and binds to `127.0.0.1`; to
+invite from the People page, and videos and uploads stay private to the
+person who made them. The service serves plain HTTP and binds to
+`127.0.0.1`; to
 reach it from another machine, set `H3_BIND` to a private address — a
 Tailscale address, or an SSH tunnel — and put a TLS-terminating reverse proxy
 in front of it if it is anything but a network you trust. See
@@ -514,8 +515,8 @@ Run from outside a checkout, it clones the repository itself:
 bash install.sh --dir ~/h3
 ```
 
-Both take `--branch NAME`, and need it while the web UI lives on a branch of
-its own rather than on the default one. Either way the options are the same:
+Both accept `--branch NAME` if you want a branch other than the default
+one. Either way the options are the same:
 
 ```sh
 ./install.sh                    # repository and .env only

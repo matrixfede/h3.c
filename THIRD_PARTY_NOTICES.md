@@ -52,6 +52,7 @@ license:
 | Uvicorn | backend | BSD-3-Clause |
 | Pydantic, pydantic-settings | backend | MIT |
 | python-multipart | backend | Apache-2.0 |
+| argon2-cffi (Argon2 password hashing) | backend | MIT |
 | React, React DOM | frontend | MIT |
 | Vite, @vitejs/plugin-react | frontend | MIT |
 | TypeScript | frontend | Apache-2.0 |

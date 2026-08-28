@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import { api } from "../api";
 import { clock, stateName } from "../copy";
@@ -42,6 +42,9 @@ function TakeCard({ job, onOpen, onDelete }: {
   onDelete: (job: Job) => void;
 }) {
   const video = useRef<HTMLVideoElement>(null);
+  // A take whose video cannot be read has no poster either (T107): the
+  // cell says so, instead of showing a broken picture.
+  const [broken, setBroken] = useState(false);
 
   return (
     <div
@@ -57,7 +60,16 @@ function TakeCard({ job, onOpen, onDelete }: {
       onMouseLeave={() => video.current?.pause()}
     >
       <div className="screen" onClick={() => onOpen(job)}>
-        <img className="poster" src={api.posterUrl(job.id)} alt="" />
+        {broken ? (
+          <div className="poster gone">no picture</div>
+        ) : (
+          <img
+            className="poster"
+            src={api.posterUrl(job.id)}
+            alt=""
+            onError={() => setBroken(true)}
+          />
+        )}
         <video
           ref={video}
           className="playing"

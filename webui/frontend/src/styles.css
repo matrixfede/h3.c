@@ -315,12 +315,19 @@ main{max-width:var(--column);margin:0 auto;padding:0 22px 64px}
 .takes{max-width:var(--column);margin:56px auto 0;padding:0 22px}
 .takes h2{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 14px;letter-spacing:.02em}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.take{min-width:0}
 .take .screen{
   position:relative;aspect-ratio:16/10;border-radius:8px;overflow:hidden;
   background:var(--sunken);cursor:pointer;
 }
 .take .poster,.take .playing{
   position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
+}
+/* An unreadable video has no poster: a quiet placeholder, not a broken
+   picture (T107). */
+.take .poster.gone{
+  display:grid;place-items:center;color:var(--muted);
+  font-family:var(--sans);font-size:11px;
 }
 .take .playing{display:none}
 .take:hover .poster{display:none}
@@ -340,6 +347,7 @@ main{max-width:var(--column);margin:0 auto;padding:0 22px 64px}
 .take .veil .asking{color:#fff}
 .take .cap{
   display:block;margin-top:8px;font-family:var(--serif);font-size:14.5px;line-height:1.25;
+  overflow-wrap:anywhere;
 }
 .take .meta{
   display:flex;gap:8px;font-size:11px;color:var(--muted);
