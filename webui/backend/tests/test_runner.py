@@ -288,9 +288,19 @@ def test_a_running_job_records_its_process(tmp_path):
     with _client(tmp_path, SLOW) as client:
         job_id = client.post("/api/jobs", json=JOB).json()["id"]
         _wait(client, job_id, {"running"})
-        pid = client.app.state.db.query_one(
-            "SELECT pid FROM jobs WHERE id = ?", (job_id,)
-        )["pid"]
+        # The pid lands in a second UPDATE right after the spawn (T105): the
+        # state is the claim, the pid is recorded once the process exists. On
+        # a slow runner that gap is real, so wait for the pid rather than read
+        # it inside the window — the invariant is "a running job ends up with
+        # its process recorded", not "both fields flip in the same write".
+        deadline = time.time() + 20.0
+        pid = None
+        while time.time() < deadline and pid is None:
+            pid = client.app.state.db.query_one(
+                "SELECT pid FROM jobs WHERE id = ?", (job_id,)
+            )["pid"]
+            if pid is None:
+                time.sleep(0.05)
         assert pid is not None and pid > 0
         client.post(f"/api/jobs/{job_id}/cancel")
         _wait(client, job_id, {"cancelled", "failed"})
