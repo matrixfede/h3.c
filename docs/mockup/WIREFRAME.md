@@ -1,6 +1,6 @@
 # Wireframe di riferimento — web UI h3.c
 
-Materiale approvato con R20/R21 e input del task 67 in `PLAN.md`.
+Materiale approvato durante la progettazione della web UI.
 
 Schermata 1 — Simple (default):
 

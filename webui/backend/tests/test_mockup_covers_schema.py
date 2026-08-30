@@ -1,8 +1,8 @@
 """The mockup must show every CLI option, so no flag is silently dropped.
 
-Rubric M1 criterion 1 in PLAN.md: every option of the schema that the UI does
-not exclude appears in a screen with its CLI flag visible, and every excluded
-one is listed as excluded.
+The covering rule (design rubric M1): every option of the schema that the UI
+does not exclude appears in a screen with its CLI flag visible, and every
+excluded one is listed as excluded.
 """
 
 import json

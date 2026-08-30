@@ -7,12 +7,13 @@
 #   cp .env.example .env      # then set H3_MODEL_DIR
 #   docker compose up --build
 #
-# The UI listens on 127.0.0.1 only. It has no authentication: do not publish
-# these ports on an untrusted network. To reach it from another machine, set
-# H3_BIND to a private-network address — a Tailscale address is the safe
-# choice, because the tailnet does the authenticating that this service does
-# not. Binding to 0.0.0.0 hands the GPU and every generated file to anyone on
-# the LAN.
+# The UI listens on 127.0.0.1 only. Every call needs an account: the
+# administrator is bootstrapped from H3_ADMIN_USERNAME/H3_ADMIN_PASSWORD, the
+# others come from single-use invites. But the service speaks plain HTTP, so
+# outside a network you trust put a TLS-terminating reverse proxy in front, or
+# publish on a private overlay: a Tailscale address in H3_BIND keeps only your
+# own devices reachable. Binding to 0.0.0.0 hands the login screen — and the
+# GPU behind it — to anyone on the LAN.
 
 services:
   api:

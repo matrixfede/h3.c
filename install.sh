@@ -96,19 +96,24 @@ check_prerequisites() {
     say "Checking what this machine already has"
     local missing=()
     have git || missing+=("git — to fetch the repository")
-    have ffmpeg || missing+=("ffmpeg — h3 muxes video and audio with it")
+    # Writing the .env below is a python3 heredoc: needed on every path.
+    have python3 || missing+=("python3 — to write the .env")
 
     # Two ways to build and run: the containers, or the compiler on the host.
     if have docker; then
         info "docker: yes"
+        # ffmpeg and ICU live in the images; the host does not need them.
+        info "ffmpeg/ICU: not required on the host — the images carry them"
     elif have nvcc && have make; then
         info "docker: no, but nvcc and make are here — the local path works"
+        have ffmpeg || missing+=("ffmpeg — h3 muxes video and audio with it")
+        { have pkg-config && pkg-config --modversion icu-uc >/dev/null 2>&1; } ||
+            missing+=("pkg-config + libicu-dev — h3 links ICU (README: 72+)")
     else
         missing+=("docker, or nvcc and make — one of the two ways to build h3")
     fi
-    for tool in git ffmpeg; do
-        have "$tool" && info "$tool: yes"
-    done
+    have git && info "git: yes"
+    have python3 && info "python3: yes"
 
     if [ ${#missing[@]} -gt 0 ]; then
         printf '\n' >&2

@@ -5,11 +5,8 @@ marked done until a command says so.**
 
 ## Before you start
 
-Work is planned in [`PLAN.md`](PLAN.md), which is versioned on purpose — its
-git history is the log of how the requirements evolved. Concluded phases are
-archived in `PLAN_ARCHIVE.md`. If you are adding something substantial, open an
-issue first and say what you intend to change; a plan beats a surprise pull
-request.
+If you are adding something substantial, open an issue first and say what you
+intend to change; a plan beats a surprise pull request.
 
 ## The gate
 

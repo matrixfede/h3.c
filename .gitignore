@@ -54,3 +54,7 @@ docs/AGENT_SOP.md
 scripts/agent_logging.py
 scripts/health_report.sh
 scripts/install_git_hook.sh
+
+# Python packaging artefacts from a local `pip install` of the backend.
+webui/backend/build/
+*.egg-info/
