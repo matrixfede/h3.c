@@ -42,3 +42,15 @@ __pycache__/
 
 # Local docker env
 .env
+
+# Agent method files: they guide work on this machine (R35, 2026-08-30) but
+# are not part of the public repository.
+PLAN.md
+PLAN.template.md
+PLAN_ARCHIVE.md
+AGENTS.md
+CLAUDE.md
+docs/AGENT_SOP.md
+scripts/agent_logging.py
+scripts/health_report.sh
+scripts/install_git_hook.sh
