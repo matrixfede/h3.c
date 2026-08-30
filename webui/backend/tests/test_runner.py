@@ -70,6 +70,22 @@ def _wait(client, job_id, states, timeout=20.0):
     pytest.fail(f"job stayed in {job['state']}")
 
 
+def _wait_pid(client, job_id, timeout=20.0):
+    """The pid is recorded in the write right after the spawn (T105), so a
+    job can legitimately be 'running' with the pid still absent: wait it
+    out. The invariant the restart sweep relies on is that a running job
+    ends up with its process recorded, not that both flip in one write."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        pid = client.app.state.db.query_one(
+            "SELECT pid FROM jobs WHERE id = ?", (job_id,)
+        )["pid"]
+        if pid is not None:
+            return pid
+        time.sleep(0.05)
+    pytest.fail("the running job never recorded its pid")
+
+
 def test_a_job_runs_to_completion_and_keeps_its_artifacts(tmp_path):
     with _client(tmp_path, SUCCESS) as client:
         created = client.post("/api/jobs", json=JOB)
@@ -288,20 +304,8 @@ def test_a_running_job_records_its_process(tmp_path):
     with _client(tmp_path, SLOW) as client:
         job_id = client.post("/api/jobs", json=JOB).json()["id"]
         _wait(client, job_id, {"running"})
-        # The pid lands in a second UPDATE right after the spawn (T105): the
-        # state is the claim, the pid is recorded once the process exists. On
-        # a slow runner that gap is real, so wait for the pid rather than read
-        # it inside the window — the invariant is "a running job ends up with
-        # its process recorded", not "both fields flip in the same write".
-        deadline = time.time() + 20.0
-        pid = None
-        while time.time() < deadline and pid is None:
-            pid = client.app.state.db.query_one(
-                "SELECT pid FROM jobs WHERE id = ?", (job_id,)
-            )["pid"]
-            if pid is None:
-                time.sleep(0.05)
-        assert pid is not None and pid > 0
+        pid = _wait_pid(client, job_id)
+        assert pid > 0
         client.post(f"/api/jobs/{job_id}/cancel")
         _wait(client, job_id, {"cancelled", "failed"})
 
@@ -315,10 +319,7 @@ def test_a_restart_stops_a_live_h3_before_failing_its_job(tmp_path):
     with authed_client(config) as client:
         job_id = client.post("/api/jobs", json=JOB).json()["id"]
         _wait(client, job_id, {"running"})
-        pid = client.app.state.db.query_one(
-            "SELECT pid FROM jobs WHERE id = ?", (job_id,)
-        )["pid"]
-        assert pid
+        pid = _wait_pid(client, job_id)
 
         # A crash, not a shutdown: the first backend gets no graceful stop,
         # and a second startup sweeps over the job while h3 is still alive.
