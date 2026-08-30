@@ -63,6 +63,9 @@ jobs:
       - name: Validate compose configuration
         env:
           H3_MODEL_DIR: ./MiniMax-H3
+          # Compose requires it (`:?`); config validation only needs it to
+          # exist, so this placeholder never reaches a running container.
+          H3_ADMIN_PASSWORD: ci-placeholder-not-a-secret
         run: |
           docker compose config >/dev/null
           H3_FACESWAP_CMD=/opt/faceswap/run H3_FACESWAP_DIR=/opt/faceswap \
