@@ -1,16 +1,70 @@
+<div align="center">
+  <img src="docs/assets/banner.svg" alt="h3.c — MiniMax-H3 on CUDA and Metal, with the h3c studio web UI" width="600">
+  <br/><br/>
+  <a href="https://github.com/matrixfede/h3.c/actions/workflows/ci.yml"><img src="https://github.com/matrixfede/h3.c/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"></a>
+</div>
+
 # h3.c
 
 Native MiniMax-H3 inference in C for NVIDIA CUDA on Linux and Metal on Apple
 Silicon. Prompt-to-video/audio, first/last-frame conditioning, and ordered
 Ref2VA image/video/audio references work end to end on both backends.
 
-A browser front end is included: **h3c studio** exposes every generation
-option of the CLI, with a live preview of the denoising and a weighted
-progress bar. If you would rather click than type, jump to
-[Web UI](#web-ui) — the rest of this document is the CLI.
+**h3c studio**, the included browser front end, exposes every generation
+option of the CLI with a live preview of the denoising — if you would rather
+click than type, start below. The rest of this document is the CLI.
 
 In a hurry: `install.sh` does the setup below for you, and asks before every
 download. See [Installing with the script](#installing-with-the-script).
+
+## h3c studio (Web UI)
+
+`h3c studio` is a small FastAPI backend and a React front end that drive the
+same `h3` binary this document describes. Every CLI option is reachable from
+the browser, generation progress streams live with a weighted progress bar,
+and uploaded photos and clips stay in a reusable library.
+
+```sh
+cp .env.example .env      # set H3_MODEL_DIR to your checkpoint
+docker compose up --build # then open http://127.0.0.1:8080
+```
+
+Docker needs the NVIDIA Container Toolkit; the checkpoint is bind-mounted
+read-only and never enters an image. A local, non-Docker setup and the design
+notes are in [`docs/WEBUI.md`](docs/WEBUI.md).
+
+Sign in with the administrator account you define in `.env`
+(`H3_ADMIN_USERNAME`, `H3_ADMIN_PASSWORD`): it is created once, on the first
+start of an empty database. Every other account is made with a single-use
+invite from the People page, and videos and uploads stay private to the
+person who made them. The service serves plain HTTP and binds to
+`127.0.0.1`; to reach it from another machine, set `H3_BIND` to a private
+address — a Tailscale address, or an SSH tunnel — and put a TLS-terminating
+reverse proxy in front of it if it is anything but a network you trust. See
+[`docs/WEBUI.md`](docs/WEBUI.md#security).
+
+An optional post-processing stage can hand the finished video to an external
+program. This repository ships no such program and no models: see
+[`docs/POSTPROCESSING.md`](docs/POSTPROCESSING.md).
+
+### Gallery
+
+All five views of the studio (synthetic demo data):
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/assets/screenshots/login.png" width="430"><br/><sub>Sign in — invites create the other accounts</sub></td>
+    <td align="center"><img src="docs/assets/screenshots/studio.png" width="430"><br/><sub>The prompt page, with the live denoising strip</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/assets/screenshots/create.png" width="430"><br/><sub>Expert page — every engine control, validated live</sub></td>
+    <td align="center"><img src="docs/assets/screenshots/people.png" width="430"><br/><sub>People — accounts, single-use invites, quotas</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/assets/screenshots/takes.png" width="430"><br/><sub>Takes — the finished library, download and reuse</sub></td>
+  </tr>
+</table>
 
 ## Platforms and prerequisites
 
@@ -462,37 +516,6 @@ Reference flags may be repeated and their command-line order is preserved.
 Standalone audio must accompany an image or video reference. Audio references
 must be 2–15 seconds; at most three audio inputs are accepted and their total
 decoded duration is capped at 15 seconds.
-
-## Web UI
-
-`h3c studio` is a small FastAPI backend and a React front end that drive the
-same `h3` binary this document describes. Every CLI option is reachable from
-the browser, generation progress streams live, and uploaded photos and clips
-stay in a reusable library.
-
-```sh
-cp .env.example .env      # set H3_MODEL_DIR to your checkpoint
-docker compose up --build # then open http://127.0.0.1:8080
-```
-
-Docker needs the NVIDIA Container Toolkit; the checkpoint is bind-mounted
-read-only and never enters an image. A local, non-Docker setup and the design
-notes are in [`docs/WEBUI.md`](docs/WEBUI.md).
-
-Sign in with the administrator account you define in `.env`
-(`H3_ADMIN_USERNAME`, `H3_ADMIN_PASSWORD`): it is created once, on the first
-start of an empty database. Every other account is made with a single-use
-invite from the People page, and videos and uploads stay private to the
-person who made them. The service serves plain HTTP and binds to
-`127.0.0.1`; to
-reach it from another machine, set `H3_BIND` to a private address — a
-Tailscale address, or an SSH tunnel — and put a TLS-terminating reverse proxy
-in front of it if it is anything but a network you trust. See
-[`docs/WEBUI.md`](docs/WEBUI.md#security).
-
-An optional post-processing stage can hand the finished video to an external
-program. This repository ships no such program and no models: see
-[`docs/POSTPROCESSING.md`](docs/POSTPROCESSING.md).
 
 ## Installing with the script
 
